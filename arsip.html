@@ -1,0 +1,2803 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Arsip Digital - PT. Awan Prima Office</title>
+     <script>
+        // ===== PROTEKSI LOGIN: wajib login sebelum membuka website arsip =====
+        (function () {
+            var HALAMAN_LOGIN = 'login.html';
+
+            function sudahLogin() {
+                return localStorage.getItem('isLoggedIn') === 'true' &&
+                       ['admin', 'sekretaris', 'pimpinan'].indexOf(localStorage.getItem('currentRole')) !== -1;
+            }
+
+            function cek() {
+                if (!sudahLogin()) {
+                    document.documentElement.style.visibility = 'hidden';
+                    var file = location.pathname.split('/').pop() || 'arsip.html';
+                    window.location.replace(HALAMAN_LOGIN + '?redirect=' + encodeURIComponent(file));
+                }
+            }
+
+            cek();
+            // Cegah halaman bisa dibuka lewat tombol Back setelah logout
+            window.addEventListener('pageshow', function (e) { if (e.persisted) cek(); });
+        })();
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0b1329;
+            color: #ffffff;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px;
+            background-color: #080e1e;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.75rem;
+            color: #38bdf8;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 20px 0;
+            flex-grow: 1;
+        }
+
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 25px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-menu li a:hover,
+        .sidebar-menu li.active a {
+            background-color: #1e293b;
+            color: #38bdf8;
+            border-left: 4px solid #38bdf8;
+        }
+
+        .badge-notif {
+            background-color: #ef4444;
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-left: auto;
+            font-weight: bold;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-nav {
+            display: block;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-logout {
+            background-color: rgba(220, 38, 38, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .btn-logout:hover { background-color: #dc2626; color: white; }
+
+        /* --- MAIN CONTENT AREA --- */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            background: #0b1329;
+        }
+
+        .top-navbar {
+            background: #080e1e;
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-navbar h1 {
+            font-size: 1.3rem;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .user-profile {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .content-body { padding: 30px; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* --- HERO BANNER SAMBUTAN BERANDA --- */
+        .hero-section {
+            background-color: #0b1329;
+            border-radius: 16px;
+            padding: 50px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            min-height: 480px;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 450px;
+            height: 450px;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(11, 19, 41, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero-left { max-width: 540px; z-index: 2; }
+
+        .badge-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: #38bdf8;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .badge-tag::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background-color: #38bdf8;
+            border-radius: 50%;
+        }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1.25;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+
+        .hero-title span { color: #38bdf8; }
+
+        .hero-desc {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-blue {
+            background-color: #2563eb;
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+            transition: all 0.2s ease;
+        }
+        .btn-blue:hover { background-color: #1d4ed8; }
+
+        .btn-outline-cyan {
+            background-color: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-outline-cyan:hover {
+            background-color: #38bdf8;
+            color: #080e1e;
+        }
+
+        .hero-footer-note {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 25px;
+        }
+
+        .hero-footer-note span { color: #10b981; font-weight: bold; }
+
+        /* MOCKUP GRAPHIC */
+        .hero-right {
+            position: relative;
+            width: 420px;
+            height: 380px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+        }
+
+        .main-card-mockup {
+            width: 320px;
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            transform: rotate(3deg);
+            color: #1e293b;
+            position: relative;
+        }
+
+        .mockup-header { font-size: 0.7rem; font-weight: 700; color: #64748b; letter-spacing: 1px; }
+        .mockup-title { font-size: 1.3rem; font-weight: 800; color: #0f172a; margin-bottom: 15px; }
+        .mockup-screen {
+            background: #e0f2fe;
+            border-radius: 12px;
+            padding: 15px;
+            height: 160px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        .mockup-bars { display: flex; align-items: flex-end; gap: 10px; height: 80px; padding-left: 10px; }
+        .bar { background: #38bdf8; border-radius: 4px; width: 30px; }
+        .bar-1 { height: 50px; } .bar-2 { height: 75px; } .bar-3 { height: 35px; }
+        .mockup-sun { position: absolute; top: 15px; right: 15px; width: 30px; height: 30px; background: #fcd34d; border-radius: 50%; }
+        .mockup-footer-tags { display: flex; justify-content: space-between; margin-top: 15px; font-size: 0.65rem; color: #94a3b8; }
+
+        .floating-card {
+            position: absolute;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 10px 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 5;
+            color: #0f172a;
+        }
+        .float-top-right { top: 20px; right: 0px; transform: rotate(-2deg); }
+        .float-bottom-left { bottom: 30px; left: -10px; transform: rotate(-4deg); }
+        .card-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        .icon-blue { background: #e0f2fe; color: #0284c7; }
+        .icon-green { background: #dcfce7; color: #16a34a; }
+        .card-info h4 { font-size: 0.8rem; font-weight: 700; margin: 0; }
+        .card-info p { font-size: 0.65rem; color: #64748b; margin: 0; }
+
+        /* --- STYLES BUKU AGENDA TABEL --- */
+        .agenda-container {
+            background: #080e1e;
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .agenda-header { margin-bottom: 25px; }
+        .agenda-header h2 { font-size: 1.4rem; color: #ffffff; font-weight: 700; }
+
+        .agenda-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            width: 100%;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            position: relative;
+            flex-grow: 1;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 16px 10px 40px;
+            background-color: #0b1329;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        table.agenda-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        table.agenda-table th {
+            background-color: #1e293b;
+            color: #38bdf8;
+            padding: 14px 16px;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            white-space: nowrap;
+        }
+
+        table.agenda-table td {
+            padding: 14px 16px;
+            color: #cbd5e1;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: middle;
+        }
+
+        table.agenda-table tbody tr:hover { background-color: rgba(30, 41, 59, 0.5); }
+
+        .badge-kode {
+            background-color: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .status-belum { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .status-sudah { background-color: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        .btn-action-group { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+
+        .btn-action {
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border: 1px solid;
+            transition: all 0.2s;
+        }
+        .btn-view { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
+        .btn-print { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+        .btn-disp { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+        .btn-view:hover { background: #38bdf8; color: #fff; }
+        .btn-print:hover { background: #10b981; color: #fff; }
+        .btn-disp:hover { background: #f59e0b; color: #fff; }
+
+        .cta-box-inline {
+            background: rgba(37, 99, 235, 0.1);
+            border: 1px dashed #2563eb;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .cta-box-inline span { font-size: 0.85rem; color: #94a3b8; }
+        .btn-cta-small {
+            background: #2563eb;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-cta-small:hover { background: #1d4ed8; }
+
+        /* --- MODAL FORM STYLES --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(3, 7, 18, 0.85);
+            backdrop-filter: blur(6px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .form-modal-card {
+            background-color: #0d1b3e;
+            border: 2px solid #2563eb;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 680px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 30px 35px;
+            color: #ffffff;
+            box-shadow: 0 0 35px rgba(37, 99, 235, 0.25);
+        }
+
+        .form-modal-card::-webkit-scrollbar { width: 6px; }
+        .form-modal-card::-webkit-scrollbar-thumb { background: #2563eb; border-radius: 10px; }
+
+        .form-modal-card h2 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .form-group-full { grid-column: span 2; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background-color: #07122b;
+            border: 1px solid #1e3a8a;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .form-group textarea { min-height: 70px; resize: vertical; }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 15px;
+        }
+
+        .btn-cancel {
+            background-color: #172a53; color: #94a3b8; border: none;
+            padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer;
+        }
+        .btn-save {
+            background-color: #2563eb; color: #ffffff; border: none;
+            padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer;
+        }
+
+        /* --- PREVIEW SURAT & CETAK LEMBAR --- */
+        .surat-preview-paper, .disposisi-paper {
+            background: #ffffff;
+            color: #000000;
+            padding: 35px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 650px;
+            font-family: 'Times New Roman', Times, serif;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .surat-header-kop {
+            text-align: center;
+            border-bottom: 3px double #000;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+        .surat-header-kop h3 { font-size: 1.2rem; font-weight: bold; }
+        .surat-header-kop p { font-size: 0.85rem; margin-top: 3px; }
+
+        .disposisi-table-cetak {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000000;
+        }
+        .disposisi-table-cetak td {
+            border: 1px solid #000000;
+            padding: 8px 12px;
+            vertical-align: top;
+            font-size: 0.95rem;
+        }
+        .header-title { text-align: center; font-weight: bold; font-size: 1.2rem; padding: 8px 0; }
+        .sifat-boxes { display: flex; justify-content: flex-end; gap: 8px; padding-right: 5px; }
+        .sifat-box {
+            border: 1.5px solid #000; width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+        .sifat-box.active { background: #000; color: #fff; }
+
+                /* ===== TAMBAHAN: TOMBOL PREVIEW & PERBAIKAN CETAK ===== */
+        .btn-prev { background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3); }
+        .btn-prev:hover { background: #a855f7; color: #fff; }
+
+        @media print {
+            .sidebar, .main-content { display: none !important; }
+            body { display: block; height: auto; overflow: visible; background: #fff; }
+            .modal-overlay {
+                position: static !important;
+                background: #fff !important;
+                backdrop-filter: none !important;
+                padding: 0 !important;
+            }
+            .surat-preview-paper, .disposisi-paper {
+                box-shadow: none !important;
+                max-height: none !important;
+                overflow: visible !important;
+                max-width: 100% !important;
+            }
+            .surat-preview-paper button, .disposisi-paper button { display: none !important; }
+            .sifat-box.active { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+
+                /* ===== TAMBAHAN: HAPUS, DISPOSISI & KLASIFIKASI ===== */
+        .btn-hapus { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+        .btn-hapus:hover { background: #ef4444; color: #fff; }
+        .btn-cta-small:disabled { opacity: 0.4; cursor: not-allowed; }
+
+                /* ===== TAMBAHAN: NOTIFIKASI WHATSAPP ===== */
+        .btn-wa {
+            display: inline-block;
+            background: #16a34a;
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .btn-wa:hover { background: #15803d; }
+
+             /* ===== TAMBAHAN: TOMBOL EDIT ===== */
+        .btn-edit { background: rgba(129, 140, 248, 0.15); color: #a5b4fc; border-color: rgba(129, 140, 248, 0.3); }
+        .btn-edit:hover { background: #6366f1; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div>
+            <div class="sidebar-header">
+                <h2>PT. AWAN PRIMA OFFICE</h2>
+                <p>Digital Archive System</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="active" onclick="switchTab(event, 'berandaArsip')"><a href="#beranda">📁 Beranda Arsip</a></li>
+                <li onclick="switchTab(event, 'suratMasuk')"><a href="#surat-masuk">📥 Surat Masuk</a></li>
+                <li onclick="switchTab(event, 'suratKeluar')"><a href="#surat-keluar">📤 Surat Keluar</a></li>
+                <li onclick="switchTab(event, 'klasifikasi')"><a href="#klasifikasi">🏷️ Kode Klasifikasi</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-footer">
+            <a href="#" id="logoutBtn" class="btn-nav btn-logout">🚪 Logout</a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="top-navbar">
+            <h1 id="pageTitle">Beranda Arsip Digital</h1>
+            <div class="user-profile">👤 Pimpinan</div>
+        </div>
+
+        <div class="content-body">
+            
+            <!-- 1. BERANDA ARSIP (HERO BANNER SAPAAN - CTA PANDUAN & KODE KLASIFIKASI) -->
+            <div id="berandaArsip" class="tab-pane active">
+                <div class="hero-section">
+                    <div class="hero-left">
+                        <div class="badge-tag">SISTEM ARSIP & KOLEKSI DOKUMEN</div>
+                        <h1 class="hero-title">Selamat Datang di <span>Arsip Digital.</span></h1>
+                        <p class="hero-desc">
+                            Selamat datang di portal pengelolaan arsip internal PT. Awan Prima Office. Sistem ini hadir untuk mempermudah pencatatan, pencarian, serta tata kelola dokumen korespondensi surat masuk, surat keluar, dan disposisi perusahaan secara terstruktur dan aman.
+                        </p>
+                        <div class="hero-buttons">
+                            <button onclick="bukaPanduanModal()" class="btn-blue">Lihat Panduan 📖</button>
+                            <button onclick="switchTabDirect('klasifikasi')" class="btn-outline-cyan">Kode Klasifikasi 🏷️</button>
+                        </div>
+                        <div class="hero-footer-note">
+                            <span>&#10003;</span> Pengelolaan dokumen resmi dan terpusat PT. Awan Prima Office
+                        </div>
+                    </div>
+
+                    <div class="hero-right">
+                        <div class="floating-card float-top-right">
+                            <div class="card-icon icon-blue">📄</div>
+                            <div class="card-info">
+                                <h4>Digital Archive</h4>
+                                <p>Dokumen lebih terorganisir</p>
+                            </div>
+                        </div>
+
+                        <div class="floating-card float-bottom-left">
+                            <div class="card-icon icon-green">&#8599;</div>
+                            <div class="card-info">
+                                <h4>Smart Workplace</h4>
+                                <p>Kerja lebih efektif</p>
+                            </div>
+                        </div>
+
+                        <div class="main-card-mockup">
+                            <div class="mockup-header">AWAN PRIMA OFFICE</div>
+                            <div class="mockup-title">Digital Archive<br>System</div>
+                            <div class="mockup-screen">
+                                <div class="mockup-sun"></div>
+                                <div class="mockup-bars">
+                                    <div class="bar bar-1"></div>
+                                    <div class="bar bar-2"></div>
+                                    <div class="bar bar-3"></div>
+                                </div>
+                            </div>
+                            <div class="mockup-footer-tags">
+                                <span>Surat & Disposisi</span>
+                                <span>Internal PT APO</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. SURAT MASUK -->
+            <div id="suratMasuk" class="tab-pane">
+                <div class="agenda-container">
+                    <div class="agenda-header">
+                        <h2>Buku Agenda Surat Masuk</h2>
+                    </div>
+
+                     <div class="agenda-controls">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="searchSuratMasuk" onkeyup="filterSuratMasuk()" placeholder="Cari nomor, pengirim, perihal...">
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn-outline-cyan" onclick="ingatkanPimpinan()">📲 Ingatkan Pimpinan (<span id="jumlahBelumDisposisi">0</span>)</button>
+                            <button class="btn-blue" onclick="openFormModal('inputModalMasuk')">+ Input Surat Masuk</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                     <table class="agenda-table" id="tableSuratMasuk">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>Tanggal Terima</th>
+            <th>Nomor Surat</th>
+            <th>Tanggal Surat</th>
+            <th>Dari</th>
+            <th>Perihal</th>
+            <th>Isi Ringkas</th>
+            <th>Kode Arsip</th>
+            <th>Status Disposisi</th>
+            <th style="text-align: center;">Aksi</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. SURAT KELUAR -->
+            <div id="suratKeluar" class="tab-pane">
+                <div class="agenda-container">
+                    <div class="agenda-header">
+                        <h2>Buku Agenda Surat Keluar</h2>
+                    </div>
+
+                    <div class="agenda-controls">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="searchSuratKeluar" onkeyup="filterSuratKeluar()" placeholder="Cari nomor, tujuan, perihal...">
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn-blue" onclick="openFormModal('inputModalKeluar')">+ Input Surat Keluar</button>
+                        </div>
+                        <table class="agenda-table" id="tableSuratKeluar">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>Tanggal Kirim</th>
+            <th>Nomor Surat</th>
+            <th>Tanggal Surat</th>
+            <th>Kepada</th>
+            <th>Perihal</th>
+            <th>Isi Ringkas</th>
+            <th>Kode Klasifikasi</th>
+            <th style="text-align: center;">Aksi</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+                        </div>
+                    </div>            
+                </div>
+
+            <!-- 4. LEMBAR DISPOSISI -->
+            <div id="disposisi" class="tab-pane">
+                <div class="agenda-container">
+                    <div class="agenda-header">
+                        <h2>Daftar Lembar Disposisi Pimpinan</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="agenda-table" id="tableDisposisi">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nomor Surat & Pengirim</th>
+                                    <th>Perihal</th>
+                                    <th>Sifat</th>
+                                    <th>Instruksi</th>
+                                    <th>Diteruskan Kepada</th>
+                                    <th>Tgl Selesai</th>
+                                    <th style="text-align: center;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td><strong>005/110.1/PZ/IX/2026</strong><br><small>PT. PUTRI ZALSABILA</small></td>
+                                    <td>Perkenalan Produk</td>
+                                    <td><span class="badge-sifat sifat-penting">P (Penting)</span></td>
+                                    <td>Pelajari katalog dan tawarkan jadwal meeting lanjutan.</td>
+                                    <td>1. Manajer Pemasaran<br>2. Staf Logistik</td>
+                                    <td>15 Sep 2026</td>
+                                    <td style="text-align: center;">
+                                        <button class="btn-action btn-print" onclick="cetakLembarDisposisi('Perkenalan Produk', '15 Sep 2026', '05 Sep 2026', '005/110.1/PZ/IX/2026', 'PT. PUTRI ZALSABILA', '1 Berkas Proposal', 'Pelajari katalog dan tawarkan jadwal meeting lanjutan.', 'Manajer Pemasaran', 'Staf Logistik', 'P')">Cetak Fisik 🖨️</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. KODE KLASIFIKASI -->
+            <div id="klasifikasi" class="tab-pane">
+                <div class="agenda-container">
+                    <div class="agenda-header">
+                        <h2>Daftar Kode Klasifikasi Sesuai Buku Agenda</h2>
+                    </div>
+                     <div class="agenda-controls" style="justify-content: flex-end;">
+                        <button class="btn-blue" onclick="openFormModal('inputModalKlasifikasi')">+ Tambah Kode Klasifikasi</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="agenda-table">
+                            <thead>
+                                <tr>
+                                    <th>Kelompok</th>
+                                    <th>Kode Sub</th>
+                                    <th>Perihal / Kategori Dokumen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="background: rgba(56,189,248,0.1); font-weight: bold;"><td colspan="3" style="color: #38bdf8;">100 - BISNIS</td></tr>
+                                <tr><td>100</td><td><span class="badge-kode">110.1</span></td><td>Perkenalan Produk</td></tr>
+                                <tr><td>100</td><td><span class="badge-kode">111.1</span></td><td>Undangan Rapat</td></tr>
+                                <tr><td>100</td><td><span class="badge-kode">120.1</span></td><td>Permintaan Penawaran Produk</td></tr>
+                                <tr><td>100</td><td><span class="badge-kode">130.1</span></td><td>Penawaran Barang</td></tr>
+                                <tr><td>100</td><td><span class="badge-kode">140.1</span></td><td>Pesanan Barang</td></tr>
+                                <tr><td>100</td><td><span class="badge-kode">150.1</span></td><td>Pengiriman Barang</td></tr>
+                                <tr><td>100</td><td><span class="badge-kode">160.1</span></td><td>Invoice / Faktur</td></tr>
+                                <tr><td>100</td><td><span class="badge-kode">170.1</span></td><td>Klaim Kerusakan Barang</td></tr>
+                                <tr><td>100</td><td><span class="badge-kode">180.2</span></td><td>Surat Perjanjian</td></tr>
+                                <tr style="background: rgba(56,189,248,0.1); font-weight: bold;"><td colspan="3" style="color: #38bdf8;">200 - KEPEGAWAIAN</td></tr>
+                                <tr><td>200</td><td><span class="badge-kode">210.3</span></td><td>Cuti Tahunan</td></tr>
+                                <tr><td>200</td><td><span class="badge-kode">230.2</span></td><td>Wawancara</td></tr>
+                                <tr><td>200</td><td><span class="badge-kode">230.5</span></td><td>Requirement (Lowongan Kerja)</td></tr>
+                                <tr><td>200</td><td><span class="badge-kode">240.5</span></td><td>Surat Keputusan</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL PANDUAN PENGGUNAAN SISTER ARSIP -->
+    <div class="modal-overlay" id="panduanModal">
+        <div class="form-modal-card">
+            <h2>📖 PANDUAN SISTEM ARSIP DIGITAL</h2>
+            <div style="font-size: 0.9rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 20px;">
+                <p style="margin-bottom: 12px;"><strong>1. Surat Masuk:</strong> Gunakan menu ini untuk mencatat surat yang diterima dari pihak eksternal, membuat lembar disposisi pimpinan, serta mencetak fisik/pratinjau surat.</p>
+                <p style="margin-bottom: 12px;"><strong>2. Surat Keluar:</strong> Gunakan menu ini untuk mencatat korespondensi yang dikirim ke entitas luar beserta kode klasifikasinya.</p>
+                <p style="margin-bottom: 12px;"><strong>3. Lembar Disposisi:</strong> Digunakan oleh pimpinan untuk memberikan instruksi kerja atas surat masuk yang perlu ditindaklanjuti.</p>
+                <p><strong>4. Kode Klasifikasi:</strong> Acuan pengelompokan arsip berdasarkan klasifikasi bisnis (100) dan kepegawaian (200).</p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-save" onclick="closePanduanModal()">PAHAMI & TUTUP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL INPUT SURAT MASUK -->
+    <div class="modal-overlay" id="inputModalMasuk">
+        <div class="form-modal-card">
+            <h2>TAMBAH SURAT MASUK</h2>
+            <form id="formSuratMasuk" onsubmit="saveSuratMasuk(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>Nomor Surat</label><input type="text" id="noSuratMasuk" required></div>
+                    <div class="form-group"><label>Tanggal Terima</label><input type="date" id="tglTerima" required></div>
+                    <div class="form-group"><label>Tanggal Surat</label><input type="date" id="tglSuratMasuk" required></div>
+                    <div class="form-group"><label>Pengirim (Dari)</label><input type="text" id="pengirim" required></div>
+                    
+                    <div class="form-group form-group-full">
+                        <div class="cta-box-inline">
+                            <span>Butuh referensi kode & petunjuk pengarsipan?</span>
+                            <button type="button" class="btn-cta-small" onclick="switchTabDirect('klasifikasi'); closeFormModal('inputModalMasuk');">Panduan & Kode Klasifikasi 🏷️</button>
+                        </div>
+                        <label>Kode Arsip</label>
+                        <input type="text" id="kodeArsipMasuk" placeholder="" required>
+                    </div>
+
+                    <div class="form-group"><label>Lampiran</label><input type="text" id="lampiranMasukText" placeholder="1 Berkas"></div>
+                    <div class="form-group form-group-full"><label>Perihal</label><input type="text" id="perihalMasuk" required></div>
+                    <div class="form-group form-group-full"><label>Isi Ringkas</label><textarea id="isiRingkasMasuk" required></textarea></div>
+                    <div class="form-group form-group-full">
+                        <label>Upload Surat (PDF / Gambar, maks. 10 MB)</label>
+                        <input type="file" id="fileSuratMasuk" accept=".pdf,image/*">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeFormModal('inputModalMasuk')">BATAL</button>
+                    <button type="submit" class="btn-save">SIMPAN DATA</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL INPUT SURAT KELUAR -->
+    <div class="modal-overlay" id="inputModalKeluar">
+        <div class="form-modal-card">
+            <h2>TAMBAH SURAT KELUAR</h2>
+            <form id="formSuratKeluar" onsubmit="saveSuratKeluar(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>Nomor Surat</label><input type="text" id="noSuratKeluar" required></div>
+                    <div class="form-group"><label>Tanggal Kirim</label><input type="date" id="tglKirim" required></div>
+                    <div class="form-group"><label>Tanggal Surat</label><input type="date" id="tglSuratKeluar" required></div>
+                    <div class="form-group"><label>Kepada (Tujuan)</label><input type="text" id="tujuan" required></div>
+
+                    <div class="form-group form-group-full">
+                        <div class="cta-box-inline">
+                            <span>Butuh referensi kode & petunjuk pengarsipan?</span>
+                            <button type="button" class="btn-cta-small" onclick="switchTabDirect('klasifikasi'); closeFormModal('inputModalKeluar');">Panduan & Kode Klasifikasi 🏷️</button>
+                        </div>
+                        <label>Kode Klasifikasi</label>
+                        <select id="kodeKlasifikasiKeluar" onchange="autoFillPerihal()" required>
+                            <option value="">-- Pilih Kode Klasifikasi --</option>
+                            <option value="110.1" data-perihal="Perkenalan Produk">110.1 - Perkenalan Produk</option>
+                            <option value="111.1" data-perihal="Undangan Rapat">111.1 - Undangan Rapat</option>
+                            <option value="120.1" data-perihal="Permintaan Penawaran Produk">120.1 - Permintaan Penawaran Produk</option>
+                            <option value="130.1" data-perihal="Penawaran Barang">130.1 - Penawaran Barang</option>
+                            <option value="140.1" data-perihal="Pesanan Barang">140.1 - Pesanan Barang</option>
+                            <option value="150.1" data-perihal="Pengiriman Barang">150.1 - Pengiriman Barang</option>
+                            <option value="160.1" data-perihal="Invoice / Faktur">160.1 - Invoice / Faktur</option>
+                            <option value="210.3" data-perihal="Cuti Tahunan">210.3 - Cuti Tahunan</option>
+                            <option value="230.5" data-perihal="Requirement / Lowongan Kerja">230.5 - Requirement</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group form-group-full"><label>Perihal Surat</label><input type="text" id="perihalKeluar" required></div>
+                    <div class="form-group form-group-full"><label>Isi Ringkas</label><textarea id="isiRingkasKeluar" required></textarea></div>
+                    <div class="form-group form-group-full">
+                        <label>Upload Surat (PDF / Gambar, maks. 10 MB)</label>
+                        <input type="file" id="fileSuratKeluar" accept=".pdf,image/*">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeFormModal('inputModalKeluar')">BATAL</button>
+                    <button type="submit" class="btn-save">SIMPAN DATA</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL FORM DISPOSISI -->
+    <div class="modal-overlay" id="inputModalDisposisi">
+        <div class="form-modal-card">
+            <h2>FORM LEMBAR DISPOSISI PIMPINAN</h2>
+            <form id="formDisposisi" onsubmit="saveDisposisi(event)">
+                <input type="hidden" id="currentActiveStatusId">
+                <div class="form-grid">
+                    <div class="form-group form-group-full">
+                        <label>Sifat Disposisi:</label>
+                        <div style="display: flex; gap: 20px; background: #07122b; padding: 10px; border-radius: 8px;">
+                            <label><input type="radio" name="sifatDisposisiRadio" value="P" required> P (Penting)</label>
+                            <label><input type="radio" name="sifatDisposisiRadio" value="B"> B (Biasa)</label>
+                            <label><input type="radio" name="sifatDisposisiRadio" value="R"> R (Rahasia)</label>
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Nomor Surat</label><input type="text" id="dispNoSurat" required readonly></div>
+                    <div class="form-group"><label>Tanggal Surat</label><input type="text" id="dispTglSurat" required readonly></div>
+                    <div class="form-group"><label>Asal Surat</label><input type="text" id="dispAsalSurat" required readonly></div>
+                    <div class="form-group"><label>Perihal</label><input type="text" id="dispPerihal" required readonly></div>
+                    <div class="form-group"><label>Tanggal Penyelesaian</label><input type="date" id="dispTglSelesai" required></div>
+                    <div class="form-group"><label>Lampiran</label><input type="text" id="dispLampiran" required></div>
+                    <div class="form-group form-group-full"><label>Instruksi Pimpinan</label><textarea id="dispInstruksi" required></textarea></div>
+                        <div class="form-group form-group-full">
+                        <label>Diteruskan Kepada</label>
+                        <div id="dispPenerimaList"></div>
+                        <button type="button" class="btn-cta-small" id="btnTambahPenerima" onclick="tambahPenerima()">+ Tambah Penerima</button>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeFormModal('inputModalDisposisi')">BATAL</button>
+                    <button type="submit" class="btn-save">PROSES DISPOSISI</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL LIHAT SURAT (PRATINJAU DOKUMEN) -->
+    <div class="modal-overlay" id="lihatSuratModal">
+        <div class="surat-preview-paper">
+            <div class="surat-header-kop">
+                <h3>PT. AWAN PRIMA OFFICE</h3>
+                <p>Jl. Kemerdekaan No. 11, Makassar, Sulawesi Selatan<br>Telp. (0411) 06524 | Email: infoawanprima@gmail.com</p>
+            </div>
+            <h4 style="text-align: center; margin-bottom: 20px; text-decoration: underline;" id="previewJenisSurat">PRATINJAU DOKUMEN</h4>
+            <table style="width: 100%; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px;">
+                <tr><td style="width: 130px;"><strong>Nomor Surat</strong></td><td>: <span id="prevNoSurat">-</span></td></tr>
+                <tr><td><strong>Tanggal</strong></td><td>: <span id="prevTglSurat">-</span></td></tr>
+                <tr><td><strong>Pihak Terkait</strong></td><td>: <span id="prevEntitas">-</span></td></tr>
+                <tr><td><strong>Perihal</strong></td><td>: <span id="prevPerihal">-</span></td></tr>
+                <tr><td><strong>Kode Klasifikasi</strong></td><td>: <span id="prevKode">-</span></td></tr>
+                <tr><td><strong>Lampiran</strong></td><td>: <span id="prevLampiran">-</span></td></tr>
+            </table>
+            <div style="border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 15px 0; margin-bottom: 20px;">
+                <strong>Isi Surat / Ringkasan:</strong>
+                <p id="prevIsi" style="margin-top: 8px;">-</p>
+            </div>
+            <div style="text-align: right;">
+                <button class="btn-cancel" style="background:#ddd; color:#333;" onclick="closeLihatSurat()">TUTUP</button>
+                <button class="btn-save" onclick="window.print()">CETAK / PDF 🖨️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CETAK LEMBAR DISPOSISI -->
+    <div class="modal-overlay" id="cetakModalDisposisi">
+        <div class="disposisi-paper">
+            <table class="disposisi-table-cetak">
+                <tr>
+                    <td colspan="2">
+                        <div class="header-title">LEMBAR DISPOSISI</div>
+                        <div class="sifat-boxes">
+                            <div class="sifat-box" id="boxP">P</div>
+                            <div class="sifat-box" id="boxB">B</div>
+                            <div class="sifat-box" id="boxR">R</div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Perihal:</strong> <span id="printPerihal">-</span></td>
+                    <td><strong>Tanggal Penyelesaian:</strong><br><span id="printTglSelesai">-</span></td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <table style="width: 100%; border: none;">
+                            <tr><td style="border:none; width: 120px;">Tanggal Surat</td><td style="border:none;">: <span id="printTglSurat">-</span></td></tr>
+                            <tr><td style="border:none;">Nomor Surat</td><td style="border:none;">: <span id="printNoSurat">-</span></td></tr>
+                            <tr><td style="border:none;">Asal Surat</td><td style="border:none;">: <span id="printAsalSurat">-</span></td></tr>
+                            <tr><td style="border:none;">Lampiran</td><td style="border:none;">: <span id="printLampiran">-</span></td></tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <strong><u>Instruksi:</u></strong>
+                        <p id="printInstruksi" style="margin-top: 5px; min-height: 50px;">-</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <strong><u>Diteruskan:</u></strong>
+                        <div id="printDiteruskanList" style="margin-top: 5px;">-</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align: center; font-weight: bold; font-size: 0.9rem;">
+                        P = <u>Penting,</u> &nbsp;&nbsp; B = <u>Biasa,</u> &nbsp;&nbsp; R = Rahasia
+                    </td>
+                </tr>
+            </table>
+            <div style="margin-top: 15px; text-align: right;">
+                <button class="btn-cancel" style="background:#ddd; color:#333;" onclick="closeCetakDisposisi()">TUTUP</button>
+                <button class="btn-save" onclick="window.print()">PRINT 🖨️</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- MODAL PREVIEW FILE SURAT -->
+    <div class="modal-overlay" id="previewFileModal">
+        <div class="form-modal-card" style="max-width: 900px;">
+            <h2>👁️ Preview Surat: <span id="previewFileJudul"></span></h2>
+            <div id="previewFileArea" style="margin-bottom: 20px;"></div>
+            <div class="form-actions">
+                <button type="button" class="btn-save" onclick="closePreviewFile()">TUTUP</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- MODAL TAMBAH KODE KLASIFIKASI -->
+    <div class="modal-overlay" id="inputModalKlasifikasi">
+        <div class="form-modal-card">
+            <h2>TAMBAH KODE KLASIFIKASI</h2>
+            <form id="formKlasifikasi" onsubmit="saveKlasifikasi(event)">
+                <div class="form-grid">
+                    <div class="form-group form-group-full">
+                        <label>Kelompok</label>
+                        <select id="klasKelompok" required>
+                            <option value="100">100 - Bisnis</option>
+                            <option value="200">200 - Kepegawaian</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Kode Sub</label><input type="text" id="klasKode" placeholder="contoh: 190.1" required></div>
+                    <div class="form-group"><label>Perihal / Kategori Dokumen</label><input type="text" id="klasPerihal" required></div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeFormModal('inputModalKlasifikasi')">BATAL</button>
+                    <button type="submit" class="btn-save">SIMPAN KODE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+        <!-- MODAL NOTIFIKASI WHATSAPP -->
+    <div class="modal-overlay" id="waModal">
+        <div class="form-modal-card">
+            <h2>📲 Kirim Pemberitahuan WhatsApp</h2>
+            <p id="waModalKet" style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 16px;"></p>
+            <div id="waModalList"></div>
+            <div class="form-actions">
+                <button type="button" class="btn-save" onclick="closeFormModal('waModal')">SELESAI</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- MODAL EDIT SURAT (MASUK & KELUAR) -->
+    <div class="modal-overlay" id="editSuratModal">
+        <div class="form-modal-card">
+            <h2 id="editSuratJudul">EDIT SURAT</h2>
+            <form id="formEditSurat" onsubmit="saveEditSurat(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>Nomor Surat</label><input type="text" id="editNoSurat" required></div>
+                    <div class="form-group"><label id="editLabelTglTerima">Tanggal Terima</label><input type="date" id="editTglTerima" required></div>
+                    <div class="form-group"><label>Tanggal Surat</label><input type="date" id="editTglSurat" required></div>
+                    <div class="form-group"><label id="editLabelPihak">Pengirim (Dari)</label><input type="text" id="editPihak" required></div>
+                    <div class="form-group form-group-full" id="editGrupKodeMasuk"><label>Kode Arsip</label><input type="text" id="editKodeMasuk"></div>
+                    <div class="form-group form-group-full" id="editGrupKodeKeluar"><label>Kode Klasifikasi</label><select id="editKodeKeluar"></select></div>
+                    <div class="form-group" id="editGrupLampiran"><label>Lampiran</label><input type="text" id="editLampiran"></div>
+                    <div class="form-group form-group-full"><label>Perihal</label><input type="text" id="editPerihal" required></div>
+                    <div class="form-group form-group-full"><label>Isi Ringkas</label><textarea id="editIsi" required></textarea></div>
+                    <div class="form-group form-group-full">
+                        <label>Ganti File Surat (PDF / Gambar, maks. 10 MB) - kosongkan jika tidak diganti</label>
+                        <input type="file" id="editFile" accept=".pdf,image/*">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeFormModal('editSuratModal')">BATAL</button>
+                    <button type="submit" class="btn-save">SIMPAN PERUBAHAN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPT INTERAKSI -->
+    <script>
+        function switchTab(event, tabId) {
+            if (event) event.preventDefault();
+            document.querySelectorAll('.sidebar-menu li').forEach(el => el.classList.remove('active'));
+            const menuAktif = document.querySelector(`.sidebar-menu li[onclick*="${tabId === 'disposisi' ? 'suratMasuk' : tabId}"]`);
+            if (menuAktif) menuAktif.classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            const titles = {
+                'berandaArsip': 'Beranda Arsip Digital',
+                'suratMasuk': 'Buku Agenda Surat Masuk',
+                'suratKeluar': 'Buku Agenda Surat Keluar',
+                'disposisi': 'Daftar Lembar Disposisi Pimpinan',
+                'klasifikasi': 'Daftar Kode Klasifikasi'
+            };
+            document.getElementById('pageTitle').innerText = titles[tabId];
+        }
+
+        function switchTabDirect(tabId) { switchTab(null, tabId); }
+
+        function bukaPanduanModal() { document.getElementById('panduanModal').style.display = 'flex'; }
+        function closePanduanModal() { document.getElementById('panduanModal').style.display = 'none'; }
+
+        function openFormModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeFormModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function autoFillPerihal() {
+            const sel = document.getElementById('kodeKlasifikasiKeluar');
+            document.getElementById('perihalKeluar').value = sel.options[sel.selectedIndex].getAttribute('data-perihal') || '';
+        }
+
+        function bukaLihatSurat(jenis, noSurat, tglSurat, entitas, perihal, isi, kode, lampiran) {
+            document.getElementById('previewJenisSurat').innerText = `PRATINJAU DOKUMEN (${jenis.toUpperCase()})`;
+            document.getElementById('prevNoSurat').innerText = noSurat;
+            document.getElementById('prevTglSurat').innerText = tglSurat;
+            document.getElementById('prevEntitas').innerText = entitas;
+            document.getElementById('prevPerihal').innerText = perihal;
+            document.getElementById('prevKode').innerText = kode;
+            document.getElementById('prevLampiran').innerText = lampiran || '-';
+            document.getElementById('prevIsi').innerText = isi;
+            document.getElementById('lihatSuratModal').style.display = 'flex';
+        }
+        function closeLihatSurat() { document.getElementById('lihatSuratModal').style.display = 'none'; }
+
+        function cetakFisikSurat(jenis, noSurat, tglSurat, entitas, perihal, isi) {
+            bukaLihatSurat(jenis, noSurat, tglSurat, entitas, perihal, isi, '-', '1 Berkas');
+        }
+
+        function kirimDisposisi(noSurat, tglSurat, asalSurat, perihal, lampiran, statusId) {
+            document.getElementById('dispNoSurat').value = noSurat;
+            document.getElementById('dispTglSurat').value = tglSurat;
+            document.getElementById('dispAsalSurat').value = asalSurat;
+            document.getElementById('dispPerihal').value = perihal;
+            document.getElementById('dispLampiran').value = lampiran;
+            document.getElementById('currentActiveStatusId').value = statusId;
+            openFormModal('inputModalDisposisi');
+        }
+
+        function saveDisposisi(e) {
+            e.preventDefault();
+            const sifat = document.querySelector('input[name="sifatDisposisiRadio"]:checked').value;
+            const noSurat = document.getElementById('dispNoSurat').value;
+            const asalSurat = document.getElementById('dispAsalSurat').value;
+            const perihal = document.getElementById('dispPerihal').value;
+            const tglSelesai = document.getElementById('dispTglSelesai').value;
+            const lampiran = document.getElementById('dispLampiran').value;
+            const instruksi = document.getElementById('dispInstruksi').value;
+            const d1 = document.getElementById('dispDiteruskan1').value;
+            const d2 = document.getElementById('dispDiteruskan2').value || '-';
+
+            const statusId = document.getElementById('currentActiveStatusId').value;
+            if(statusId && document.getElementById(statusId)) {
+                document.getElementById(statusId).className = 'status-badge status-sudah';
+                document.getElementById(statusId).innerHTML = '🟢 Sudah';
+            }
+
+            const tbody = document.querySelector('#tableDisposisi tbody');
+            const rowCount = tbody.rows.length + 1;
+            const sifatText = sifat === 'P' ? 'P (Penting)' : (sifat === 'B' ? 'B (Biasa)' : 'R (Rahasia)');
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${rowCount}</td>
+                <td><strong>${noSurat}</strong><br><small>${asalSurat}</small></td>
+                <td>${perihal}</td>
+                <td><span class="badge-sifat ${sifat === 'P' ? 'sifat-penting' : ''}">${sifatText}</span></td>
+                <td>${instruksi}</td>
+                <td>1. ${d1}<br>2. ${d2}</td>
+                <td>${tglSelesai}</td>
+                <td style="text-align: center;">
+                    <button class="btn-action btn-print" onclick="cetakLembarDisposisi('${perihal}', '${tglSelesai}', '05 Sep 2026', '${noSurat}', '${asalSurat}', '${lampiran}', '${instruksi}', '${d1}', '${d2}', '${sifat}')">Cetak Fisik 🖨️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            alert('Disposisi berhasil disimpan dan diteruskan!');
+            closeFormModal('inputModalDisposisi');
+            switchTabDirect('disposisi');
+        }
+
+        function cetakLembarDisposisi(perihal, tglSelesai, tglSurat, noSurat, asalSurat, lampiran, instruksi, d1, d2, sifat) {
+            document.getElementById('printPerihal').innerText = perihal;
+            document.getElementById('printTglSelesai').innerText = tglSelesai;
+            document.getElementById('printTglSurat').innerText = tglSurat;
+            document.getElementById('printNoSurat').innerText = noSurat;
+            document.getElementById('printAsalSurat').innerText = asalSurat;
+            document.getElementById('printLampiran').innerText = lampiran;
+            document.getElementById('printInstruksi').innerText = instruksi;
+            document.getElementById('printDiteruskan1').innerText = d1;
+            document.getElementById('printDiteruskan2').innerText = d2;
+
+            document.getElementById('boxP').classList.toggle('active', sifat === 'P');
+            document.getElementById('boxB').classList.toggle('active', sifat === 'B');
+            document.getElementById('boxR').classList.toggle('active', sifat === 'R');
+
+            document.getElementById('cetakModalDisposisi').style.display = 'flex';
+        }
+        function closeCetakDisposisi() { document.getElementById('cetakModalDisposisi').style.display = 'none'; }
+        /* ===== TAMBAHAN: SIMPAN, CARI, UPLOAD, PREVIEW & CETAK ===== */
+
+        const arsipFile = {}; // kunci: "Jenis|Nomor Surat" -> { url, type, name }
+
+        function kunciSurat(jenis, noSurat) { return jenis + '|' + noSurat; }
+
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function formatTanggal(iso) {
+            if (!iso) return '-';
+            const bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const [y, m, d] = iso.split('-');
+            return `${d} ${bulan[parseInt(m, 10) - 1]} ${y}`;
+        }
+
+        function buatTombol(label, kelas, handler) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-action ' + kelas;
+            btn.textContent = label;
+            btn.addEventListener('click', handler);
+            return btn;
+        }
+
+        function nomorSudahAda(tabelId, noSurat) {
+            return Array.from(document.querySelectorAll(`#${tabelId} tbody tr`)).some(tr => {
+                const el = tr.cells[2] && tr.cells[2].querySelector('strong');
+                return el && el.textContent.trim().toLowerCase() === noSurat.toLowerCase();
+            });
+        }
+
+        function fileValid(file) {
+            const tipeOk = file.type === 'application/pdf' || file.type.startsWith('image/');
+            if (!tipeOk) { alert('File harus berupa PDF atau gambar.'); return false; }
+            if (file.size > 10 * 1024 * 1024) { alert('Ukuran file maksimal 10 MB.'); return false; }
+            return true;
+        }
+
+        function simpanFile(jenis, noSurat, file) {
+            arsipFile[kunciSurat(jenis, noSurat)] = {
+                url: URL.createObjectURL(file),
+                type: file.type,
+                name: file.name
+            };
+        }
+
+        /* --- SIMPAN SURAT MASUK --- */
+        function saveSuratMasuk(e) {
+            e.preventDefault();
+
+            const noSurat   = document.getElementById('noSuratMasuk').value.trim();
+            const tglTerima = formatTanggal(document.getElementById('tglTerima').value);
+            const tglSurat  = formatTanggal(document.getElementById('tglSuratMasuk').value);
+            const pengirim  = document.getElementById('pengirim').value.trim();
+            const kode      = document.getElementById('kodeArsipMasuk').value.trim();
+            const lampiran  = document.getElementById('lampiranMasukText').value.trim() || '-';
+            const perihal   = document.getElementById('perihalMasuk').value.trim();
+            const isi       = document.getElementById('isiRingkasMasuk').value.trim();
+            const file      = document.getElementById('fileSuratMasuk').files[0];
+
+            if (nomorSudahAda('tableSuratMasuk', noSurat)) { alert('Nomor surat sudah terdaftar di Surat Masuk.'); return; }
+            if (file && !fileValid(file)) return;
+            if (file) simpanFile('Surat Masuk', noSurat, file);
+
+            const tbody = document.querySelector('#tableSuratMasuk tbody');
+            const statusId = 'sm-status-' + Date.now();
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${tbody.rows.length + 1}</td>
+                <td>${escapeHTML(tglTerima)}</td>
+                <td><strong>${escapeHTML(noSurat)}</strong><br><small>${escapeHTML(tglSurat)}</small></td>
+                <td>${escapeHTML(pengirim)}</td>
+                <td><strong>${escapeHTML(perihal)}</strong><br><small>${escapeHTML(isi)}</small></td>
+                <td><span class="badge-kode">${escapeHTML(kode)}</span></td>
+                <td><span class="status-badge status-belum" id="${statusId}">🔴 Belum</span></td>
+                <td style="text-align: center;"><div class="btn-action-group"></div></td>
+            `;
+
+            const grup = tr.querySelector('.btn-action-group');
+            grup.appendChild(buatTombol('Lihat 📄', 'btn-view', () =>
+                bukaLihatSurat('Surat Masuk', noSurat, tglSurat, pengirim, perihal, isi, kode, lampiran)));
+            grup.appendChild(buatTombol('Preview 👁️', 'btn-prev', () => previewFile('Surat Masuk', noSurat)));
+            grup.appendChild(buatTombol('Cetak 🖨️', 'btn-print', () =>
+                cetakFisikSurat('Surat Masuk', noSurat, tglSurat, pengirim, perihal, isi)));
+            grup.appendChild(buatTombol('Disposisi 📋', 'btn-disp', () =>
+                kirimDisposisi(noSurat, tglSurat, pengirim, perihal, lampiran, statusId)));
+
+            grup.appendChild(buatTombol('Hapus 🗑️', 'btn-hapus', () => hapusSurat(tr, 'Surat Masuk', noSurat)));
+            tbody.appendChild(tr);
+
+            document.getElementById('formSuratMasuk').reset();
+            closeFormModal('inputModalMasuk');
+            filterSuratMasuk();
+            alert('Surat masuk berhasil disimpan!');
+            notifPimpinanSuratBaru({ noSurat, tglSurat, pengirim, perihal });
+        }
+
+        /* --- SIMPAN SURAT KELUAR --- */
+        function saveSuratKeluar(e) {
+            e.preventDefault();
+
+            const noSurat  = document.getElementById('noSuratKeluar').value.trim();
+            const tglKirim = formatTanggal(document.getElementById('tglKirim').value);
+            const tglSurat = formatTanggal(document.getElementById('tglSuratKeluar').value);
+            const tujuan   = document.getElementById('tujuan').value.trim();
+            const kode     = document.getElementById('kodeKlasifikasiKeluar').value;
+            const perihal  = document.getElementById('perihalKeluar').value.trim();
+            const isi      = document.getElementById('isiRingkasKeluar').value.trim();
+            const file     = document.getElementById('fileSuratKeluar').files[0];
+
+            if (nomorSudahAda('tableSuratKeluar', noSurat)) { alert('Nomor surat sudah terdaftar di Surat Keluar.'); return; }
+            if (file && !fileValid(file)) return;
+            if (file) simpanFile('Surat Keluar', noSurat, file);
+
+            const tbody = document.querySelector('#tableSuratKeluar tbody');
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${tbody.rows.length + 1}</td>
+                <td>${escapeHTML(tglKirim)}</td>
+                <td><strong>${escapeHTML(noSurat)}</strong><br><small>${escapeHTML(tglSurat)}</small></td>
+                <td>${escapeHTML(tujuan)}</td>
+                <td><strong>${escapeHTML(perihal)}</strong><br><small>${escapeHTML(isi)}</small></td>
+                <td><span class="badge-kode">${escapeHTML(kode)}</span></td>
+                <td style="text-align: center;"><div class="btn-action-group"></div></td>
+            `;
+
+            const grup = tr.querySelector('.btn-action-group');
+            grup.appendChild(buatTombol('Lihat 📄', 'btn-view', () =>
+                bukaLihatSurat('Surat Keluar', noSurat, tglSurat, tujuan, perihal, isi, kode, '-')));
+            grup.appendChild(buatTombol('Preview 👁️', 'btn-prev', () => previewFile('Surat Keluar', noSurat)));
+            grup.appendChild(buatTombol('Cetak 🖨️', 'btn-print', () =>
+                cetakFisikSurat('Surat Keluar', noSurat, tglSurat, tujuan, perihal, isi)));
+            grup.appendChild(buatTombol('Hapus 🗑️', 'btn-hapus', () => hapusSurat(tr, 'Surat Keluar', noSurat)));
+            tbody.appendChild(tr);
+
+            document.getElementById('formSuratKeluar').reset();
+            closeFormModal('inputModalKeluar');
+            filterSuratKeluar();
+            alert('Surat keluar berhasil disimpan!');
+        }
+
+        /* --- PENCARIAN --- */
+        function filterTabel(inputId, tabelId) {
+            const kataKunci = document.getElementById(inputId).value.toLowerCase().trim();
+            document.querySelectorAll(`#${tabelId} tbody tr`).forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(kataKunci) ? '' : 'none';
+            });
+        }
+        function filterSuratMasuk()  { filterTabel('searchSuratMasuk', 'tableSuratMasuk'); }
+        function filterSuratKeluar() { filterTabel('searchSuratKeluar', 'tableSuratKeluar'); }
+
+        /* --- PREVIEW FILE SURAT --- */
+        function previewFile(jenis, noSurat) {
+            const data = arsipFile[kunciSurat(jenis, noSurat)];
+            const area = document.getElementById('previewFileArea');
+            document.getElementById('previewFileJudul').textContent = noSurat;
+            area.innerHTML = '';
+
+            if (!data) {
+                const p = document.createElement('p');
+                p.style.cssText = 'text-align:center; color:#94a3b8; padding:40px 0;';
+                p.textContent = 'Belum ada file surat yang diupload untuk surat ini.';
+                area.appendChild(p);
+            } else if (data.type === 'application/pdf') {
+                const frame = document.createElement('iframe');
+                frame.src = data.url;
+                frame.style.cssText = 'width:100%; height:65vh; border:none; background:#fff; border-radius:8px;';
+                area.appendChild(frame);
+            } else if (data.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = data.url;
+                img.style.cssText = 'max-width:100%; max-height:65vh; display:block; margin:0 auto; border-radius:8px; background:#fff;';
+                area.appendChild(img);
+            }
+            document.getElementById('previewFileModal').style.display = 'flex';
+        }
+        function closePreviewFile() {
+            document.getElementById('previewFileModal').style.display = 'none';
+            document.getElementById('previewFileArea').innerHTML = '';
+        }
+
+        /* --- CETAK --- */
+        function cetakDokumen(html) {
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0;';
+            document.body.appendChild(iframe);
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(html);
+            doc.close();
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }, 500);
+            setTimeout(() => iframe.remove(), 60000);
+        }
+
+        function cetakFile(data) {
+            if (data.type === 'application/pdf') {
+                const iframe = document.createElement('iframe');
+                iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0;';
+                iframe.onload = () => {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch (err) {
+                        window.open(data.url, '_blank');
+                    }
+                };
+                iframe.src = data.url;
+                document.body.appendChild(iframe);
+                setTimeout(() => iframe.remove(), 60000);
+            } else {
+                cetakDokumen(`<html><body style="margin:0; text-align:center;"><img src="${data.url}" style="max-width:100%;"></body></html>`);
+            }
+        }
+
+        // Menggantikan fungsi cetakFisikSurat yang lama (yang sebelumnya hanya membuka pratinjau)
+        function cetakFisikSurat(jenis, noSurat, tglSurat, entitas, perihal, isi) {
+            const data = arsipFile[kunciSurat(jenis, noSurat)];
+            if (data) { cetakFile(data); return; }
+
+            // Jika belum ada file yang diupload, cetak lembar ringkasan surat
+            const label = jenis === 'Surat Masuk' ? 'Dari' : 'Kepada';
+            cetakDokumen(`
+                <html><head><title>${escapeHTML(noSurat)}</title></head>
+                <body style="font-family:'Times New Roman',serif; padding:30px;">
+                    <div style="text-align:center; border-bottom:3px double #000; padding-bottom:12px; margin-bottom:20px;">
+                        <h3 style="margin:0;">PT. AWAN PRIMA OFFICE</h3>
+                        <p style="margin:4px 0 0; font-size:14px;">Jl. Kemerdekaan No. 11, Makassar, Sulawesi Selatan<br>Telp. (0411) 06524 | Email: infoawanprima@gmail.com</p>
+                    </div>
+                    <h4 style="text-align:center; text-decoration:underline;">${escapeHTML(jenis.toUpperCase())}</h4>
+                    <table style="width:100%; line-height:1.8;">
+                        <tr><td style="width:140px;"><strong>Nomor Surat</strong></td><td>: ${escapeHTML(noSurat)}</td></tr>
+                        <tr><td><strong>Tanggal</strong></td><td>: ${escapeHTML(tglSurat)}</td></tr>
+                        <tr><td><strong>${label}</strong></td><td>: ${escapeHTML(entitas)}</td></tr>
+                        <tr><td><strong>Perihal</strong></td><td>: ${escapeHTML(perihal)}</td></tr>
+                    </table>
+                    <div style="border-top:1px solid #999; border-bottom:1px solid #999; padding:12px 0; margin-top:15px;">
+                        <strong>Isi Ringkas:</strong>
+                        <p>${escapeHTML(isi)}</p>
+                    </div>
+                </body></html>
+            `);
+        }
+
+        // Tambahkan tombol Preview ke baris yang sudah ada di tabel
+        document.querySelectorAll('#tableSuratMasuk tbody tr, #tableSuratKeluar tbody tr').forEach(tr => {
+            const jenis = tr.closest('table').id === 'tableSuratMasuk' ? 'Surat Masuk' : 'Surat Keluar';
+            const noSurat = tr.cells[2].querySelector('strong').textContent.trim();
+            const grup = tr.querySelector('.btn-action-group');
+            const tombolCetak = grup.querySelector('.btn-print');
+            const tombolPreview = buatTombol('Preview 👁️', 'btn-prev', () => previewFile(jenis, noSurat));
+            grup.insertBefore(tombolPreview, tombolCetak);
+        });
+
+                /* ===== TAMBAHAN: HAPUS SURAT ===== */
+
+        function hapusSurat(tr, jenis, noSurat) {
+            if (!confirm(`Hapus ${jenis.toLowerCase()} nomor ${noSurat}?`)) return;
+
+            const key = kunciSurat(jenis, noSurat);
+            if (arsipFile[key]) {
+                URL.revokeObjectURL(arsipFile[key].url);
+                delete arsipFile[key];
+            }
+
+            const tbody = tr.parentNode;
+            tr.remove();
+            Array.from(tbody.rows).forEach((row, i) => { row.cells[0].textContent = i + 1; });
+        }
+
+        // Tambahkan tombol Hapus ke baris yang sudah ada
+        document.querySelectorAll('#tableSuratMasuk tbody tr, #tableSuratKeluar tbody tr').forEach(tr => {
+            const jenis = tr.closest('table').id === 'tableSuratMasuk' ? 'Surat Masuk' : 'Surat Keluar';
+            const noSurat = tr.cells[2].querySelector('strong').textContent.trim();
+            tr.querySelector('.btn-action-group').appendChild(
+                buatTombol('Hapus 🗑️', 'btn-hapus', () => hapusSurat(tr, jenis, noSurat)));
+        });
+
+        /* ===== TAMBAHAN: DISPOSISI DENGAN COMBO BOX PENERIMA ===== */
+
+        const DAFTAR_PENERIMA = ['Manajer Keuangan', 'Manajer Pemasaran', 'Manajer Gudang'];
+
+        function segarkanPenerima() {
+            const selects = Array.from(document.querySelectorAll('#dispPenerimaList select'));
+            const dipilih = selects.map(s => s.value).filter(Boolean);
+
+            // Satu penerima tidak bisa dipilih dua kali
+            selects.forEach(s => {
+                Array.from(s.options).forEach(o => {
+                    o.disabled = o.value !== '' && o.value !== s.value && dipilih.includes(o.value);
+                });
+            });
+
+            document.getElementById('btnTambahPenerima').disabled = selects.length >= DAFTAR_PENERIMA.length;
+            document.querySelectorAll('#dispPenerimaList .btn-hapus').forEach(b => {
+                b.style.visibility = selects.length > 1 ? 'visible' : 'hidden';
+            });
+        }
+
+        function tambahPenerima() {
+            const list = document.getElementById('dispPenerimaList');
+            if (list.children.length >= DAFTAR_PENERIMA.length) return;
+
+            const baris = document.createElement('div');
+            baris.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; align-items:center;';
+
+            const sel = document.createElement('select');
+            sel.required = true;
+            sel.style.flex = '1';
+            sel.add(new Option('-- Pilih penerima --', ''));
+            DAFTAR_PENERIMA.forEach(nama => sel.add(new Option(nama, nama)));
+            sel.addEventListener('change', segarkanPenerima);
+
+            const hapus = buatTombol('✕', 'btn-hapus', () => { baris.remove(); segarkanPenerima(); });
+            hapus.type = 'button';
+            hapus.title = 'Hapus penerima';
+
+            baris.append(sel, hapus);
+            list.appendChild(baris);
+            segarkanPenerima();
+        }
+
+        function resetPenerima() {
+            document.getElementById('dispPenerimaList').innerHTML = '';
+            tambahPenerima();
+        }
+
+        // Menggantikan kirimDisposisi lama: form dikosongkan setiap kali dibuka
+        function kirimDisposisi(noSurat, tglSurat, asalSurat, perihal, lampiran, statusId) {
+    if (peranSaatIni === 'admin') { alert('Akun Admin tidak dapat memberikan disposisi.'); return; }
+    document.getElementById('formDisposisi').reset();
+            resetPenerima();
+            document.getElementById('dispNoSurat').value = noSurat;
+            document.getElementById('dispTglSurat').value = tglSurat;
+            document.getElementById('dispAsalSurat').value = asalSurat;
+            document.getElementById('dispPerihal').value = perihal;
+            document.getElementById('dispLampiran').value = lampiran;
+            document.getElementById('currentActiveStatusId').value = statusId;
+            openFormModal('inputModalDisposisi');
+        }
+
+        // Menggantikan saveDisposisi lama: penerima bisa lebih dari 2
+        function saveDisposisi(e) {
+            e.preventDefault();
+
+            const sifat      = document.querySelector('input[name="sifatDisposisiRadio"]:checked').value;
+            const noSurat    = document.getElementById('dispNoSurat').value;
+            const tglSurat   = document.getElementById('dispTglSurat').value;
+            const asalSurat  = document.getElementById('dispAsalSurat').value;
+            const perihal    = document.getElementById('dispPerihal').value;
+            const tglSelesai = formatTanggal(document.getElementById('dispTglSelesai').value);
+            const lampiran   = document.getElementById('dispLampiran').value;
+            const instruksi  = document.getElementById('dispInstruksi').value;
+            const penerima   = Array.from(document.querySelectorAll('#dispPenerimaList select'))
+                                    .map(s => s.value).filter(Boolean);
+
+            if (penerima.length === 0) { alert('Pilih minimal satu penerima disposisi.'); return; }
+
+            const statusId = document.getElementById('currentActiveStatusId').value;
+            if (statusId && document.getElementById(statusId)) {
+                document.getElementById(statusId).className = 'status-badge status-sudah';
+                document.getElementById(statusId).innerHTML = '🟢 Sudah';
+            }
+
+            const tbody = document.querySelector('#tableDisposisi tbody');
+            const sifatText = sifat === 'P' ? 'P (Penting)' : (sifat === 'B' ? 'B (Biasa)' : 'R (Rahasia)');
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${tbody.rows.length + 1}</td>
+                <td><strong>${escapeHTML(noSurat)}</strong><br><small>${escapeHTML(asalSurat)}</small></td>
+                <td>${escapeHTML(perihal)}</td>
+                <td><span class="badge-sifat ${sifat === 'P' ? 'sifat-penting' : ''}">${sifatText}</span></td>
+                <td>${escapeHTML(instruksi)}</td>
+                <td>${penerima.map((nama, i) => `${i + 1}. ${escapeHTML(nama)}`).join('<br>')}</td>
+                <td>${escapeHTML(tglSelesai)}</td>
+                <td style="text-align: center;"></td>
+            `;
+            tr.lastElementChild.appendChild(buatTombol('Cetak Fisik 🖨️', 'btn-print', () =>
+                cetakLembarDisposisi(perihal, tglSelesai, tglSurat, noSurat, asalSurat, lampiran, instruksi, penerima, null, sifat)));
+            tbody.appendChild(tr);
+
+            alert('Disposisi berhasil disimpan dan diteruskan!');
+            closeFormModal('inputModalDisposisi');
+            switchTabDirect('disposisi');
+            notifPenerimaDisposisi({ sifat, noSurat, asalSurat, perihal, instruksi, tglSelesai, penerima });
+        }
+
+        // Menggantikan cetakLembarDisposisi lama: daftar "Diteruskan" dinamis.
+        // Baris contoh lama (d1, d2 berupa teks) tetap didukung.
+        function cetakLembarDisposisi(perihal, tglSelesai, tglSurat, noSurat, asalSurat, lampiran, instruksi, d1, d2, sifat) {
+            document.getElementById('printPerihal').innerText = perihal;
+            document.getElementById('printTglSelesai').innerText = tglSelesai;
+            document.getElementById('printTglSurat').innerText = tglSurat;
+            document.getElementById('printNoSurat').innerText = noSurat;
+            document.getElementById('printAsalSurat').innerText = asalSurat;
+            document.getElementById('printLampiran').innerText = lampiran;
+            document.getElementById('printInstruksi').innerText = instruksi;
+
+            const daftar = Array.isArray(d1) ? d1 : [d1, d2].filter(x => x && x !== '-');
+            const list = document.getElementById('printDiteruskanList');
+            list.innerHTML = '';
+            daftar.forEach((nama, i) => {
+                const div = document.createElement('div');
+                div.textContent = `${i + 1}. ${nama}`;
+                list.appendChild(div);
+            });
+            if (daftar.length === 0) list.textContent = '-';
+
+            document.getElementById('boxP').classList.toggle('active', sifat === 'P');
+            document.getElementById('boxB').classList.toggle('active', sifat === 'B');
+            document.getElementById('boxR').classList.toggle('active', sifat === 'R');
+
+            document.getElementById('cetakModalDisposisi').style.display = 'flex';
+        }
+
+        resetPenerima(); // siapkan satu combo box saat halaman dimuat
+
+        /* ===== TAMBAHAN: TAMBAH & HAPUS KODE KLASIFIKASI ===== */
+
+        const tabelKlas = document.querySelector('#klasifikasi table');
+
+        function barisJudulKelompok(tr) { return tr.cells[0].hasAttribute('colspan'); }
+
+        function tambahTombolHapusKlasifikasi(tr) {
+            const td = document.createElement('td');
+            td.style.textAlign = 'center';
+            td.appendChild(buatTombol('Hapus 🗑️', 'btn-hapus', () => hapusKlasifikasi(tr)));
+            tr.appendChild(td);
+        }
+
+        function hapusKlasifikasi(tr) {
+            const kode = tr.cells[1].textContent.trim();
+            const perihal = tr.cells[2].textContent.trim();
+            if (!confirm(`Hapus kode klasifikasi ${kode} (${perihal})?`)) return;
+            tr.remove();
+
+            // Hapus juga dari pilihan di form Surat Keluar
+            const sel = document.getElementById('kodeKlasifikasiKeluar');
+            const opt = Array.from(sel.options).find(o => o.value === kode);
+            if (opt) opt.remove();
+        }
+
+        function saveKlasifikasi(e) {
+            e.preventDefault();
+
+            const kelompok = document.getElementById('klasKelompok').value;
+            const kode     = document.getElementById('klasKode').value.trim();
+            const perihal  = document.getElementById('klasPerihal').value.trim();
+
+            if (kode.charAt(0) !== kelompok.charAt(0)) {
+                alert(`Kode untuk kelompok ${kelompok} harus diawali angka ${kelompok.charAt(0)}.`);
+                return;
+            }
+
+            const tbody = tabelKlas.querySelector('tbody');
+            const rows = Array.from(tbody.rows);
+
+            if (rows.some(r => !barisJudulKelompok(r) && r.cells[1].textContent.trim() === kode)) {
+                alert('Kode klasifikasi tersebut sudah ada.');
+                return;
+            }
+
+            const header = rows.find(r => barisJudulKelompok(r) && r.cells[0].textContent.trim().startsWith(kelompok));
+            if (!header) { alert('Kelompok tidak ditemukan.'); return; }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHTML(kelompok)}</td>
+                <td><span class="badge-kode">${escapeHTML(kode)}</span></td>
+                <td>${escapeHTML(perihal)}</td>
+            `;
+            tambahTombolHapusKlasifikasi(tr);
+
+            // Sisipkan berurutan di dalam kelompoknya
+            let ref = header.nextElementSibling;
+            while (ref && !barisJudulKelompok(ref) &&
+                   kode.localeCompare(ref.cells[1].textContent.trim(), undefined, { numeric: true }) > 0) {
+                ref = ref.nextElementSibling;
+            }
+            tbody.insertBefore(tr, ref);
+
+            // Tambahkan juga ke pilihan di form Surat Keluar
+            const sel = document.getElementById('kodeKlasifikasiKeluar');
+            const opt = document.createElement('option');
+            opt.value = kode;
+            opt.dataset.perihal = perihal;
+            opt.textContent = `${kode} - ${perihal}`;
+            const setelah = Array.from(sel.options).slice(1)
+                .find(o => kode.localeCompare(o.value, undefined, { numeric: true }) < 0);
+            sel.insertBefore(opt, setelah || null);
+
+            document.getElementById('formKlasifikasi').reset();
+            closeFormModal('inputModalKlasifikasi');
+            alert('Kode klasifikasi berhasil ditambahkan!');
+        }
+
+        // Siapkan kolom Aksi pada tabel klasifikasi yang sudah ada
+        (function siapkanTabelKlasifikasi() {
+            const th = document.createElement('th');
+            th.style.textAlign = 'center';
+            th.textContent = 'Aksi';
+            tabelKlas.querySelector('thead tr').appendChild(th);
+
+            tabelKlas.querySelectorAll('tbody tr').forEach(tr => {
+                if (barisJudulKelompok(tr)) { tr.cells[0].colSpan = 4; return; }
+                tambahTombolHapusKlasifikasi(tr);
+            });
+        })();
+                /* ===== TAMBAHAN: NOTIFIKASI WHATSAPP ===== */
+
+                // ISI NOMOR WHATSAPP DI SINI (boleh 08xxx atau 628xxx)
+        const NOMOR_WA = {
+            'Pimpinan': '082217939706',
+            'Manajer Keuangan': '+62 821-8857-7483',
+            'Manajer Pemasaran': '+62 882-4548-0845',
+            'Manajer Gudang': '+62 815-4303-5190'
+        };
+
+        function normalisasiNomor(n) {
+            let d = (n || '').replace(/\D/g, '');
+            if (d.startsWith('0')) d = '62' + d.slice(1);
+            return d;
+        }
+
+        function tampilkanWa(keterangan, daftar) {
+            document.getElementById('waModalKet').textContent = keterangan;
+            const wadah = document.getElementById('waModalList');
+            wadah.innerHTML = '';
+
+            daftar.forEach(item => {
+                const nomor = normalisasiNomor(NOMOR_WA[item.nama]);
+
+                const kartu = document.createElement('div');
+                kartu.style.cssText = 'background:#07122b; border:1px solid #1e3a8a; border-radius:10px; padding:14px; margin-bottom:12px;';
+
+                const judul = document.createElement('div');
+                judul.style.cssText = 'font-weight:700; margin-bottom:8px; color:#38bdf8;';
+                judul.textContent = 'Kepada: ' + item.nama;
+
+                const isi = document.createElement('div');
+                isi.style.cssText = 'white-space:pre-wrap; font-size:0.85rem; color:#cbd5e1; margin-bottom:12px;';
+                isi.textContent = item.pesan;
+
+                kartu.append(judul, isi);
+
+                if (!nomor) {
+                    const peringatan = document.createElement('div');
+                    peringatan.style.cssText = 'font-size:0.85rem; color:#fbbf24;';
+                    peringatan.textContent = '⚠️ Nomor WhatsApp belum diisi (lihat NOMOR_WA di script).';
+                    kartu.appendChild(peringatan);
+                } else {
+                    const a = document.createElement('a');
+                    a.className = 'btn-wa';
+                    a.href = `https://wa.me/${nomor}?text=${encodeURIComponent(item.pesan)}`;
+                    a.target = '_blank';
+                    a.rel = 'noopener';
+                    a.textContent = '📲 Buka WhatsApp & Kirim';
+                    a.addEventListener('click', () => { a.textContent = '✔ WhatsApp dibuka'; });
+                    kartu.appendChild(a);
+                }
+                wadah.appendChild(kartu);
+            });
+
+            openFormModal('waModal');
+        }
+
+        /* --- Pemberitahuan ke pimpinan: surat masuk baru --- */
+        function notifPimpinanSuratBaru(s) {
+            const pesan = [
+                '*[Arsip Digital - PT. Awan Prima Office]*',
+                'Ada surat masuk baru yang *belum didisposisi*.',
+                '',
+                `Nomor Surat: ${s.noSurat}`,
+                `Tanggal: ${s.tglSurat}`,
+                `Dari: ${s.pengirim}`,
+                `Perihal: ${s.perihal}`,
+                '',
+                'Mohon segera diberikan disposisi. Terima kasih.'
+            ].join('\n');
+            tampilkanWa('Surat masuk tersimpan. Kirim pemberitahuan ke pimpinan:', [{ nama: 'Pimpinan', pesan }]);
+        }
+
+        /* --- Pengingat ke pimpinan: semua surat yang belum didisposisi --- */
+        function daftarBelumDisposisi() {
+            return Array.from(document.querySelectorAll('#tableSuratMasuk tbody tr'))
+                .filter(tr => tr.querySelector('.status-belum'))
+                .map(tr => ({
+                    noSurat: tr.cells[2].querySelector('strong').textContent.trim(),
+                    pengirim: tr.cells[3].firstChild.textContent.trim(),
+                    perihal: tr.cells[4].querySelector('strong').textContent.trim()
+                }));
+        }
+
+        function ingatkanPimpinan() {
+            const daftar = daftarBelumDisposisi();
+            if (daftar.length === 0) { alert('Semua surat masuk sudah didisposisi. 👍'); return; }
+
+            const baris = daftar.map((s, i) => `${i + 1}. ${s.noSurat} - ${s.pengirim} (${s.perihal})`);
+            const pesan = [
+                '*[Arsip Digital - PT. Awan Prima Office]*',
+                `Terdapat *${daftar.length} surat masuk* yang belum didisposisi:`,
+                '',
+                ...baris,
+                '',
+                'Mohon ditindaklanjuti. Terima kasih.'
+            ].join('\n');
+            tampilkanWa('Kirim pengingat ke pimpinan:', [{ nama: 'Pimpinan', pesan }]);
+        }
+
+        // Jumlah surat belum didisposisi di tombol, diperbarui otomatis
+        function segarkanJumlahBelumDisposisi() {
+            document.getElementById('jumlahBelumDisposisi').textContent = daftarBelumDisposisi().length;
+        }
+        new MutationObserver(segarkanJumlahBelumDisposisi).observe(
+            document.getElementById('tableSuratMasuk'),
+            { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] }
+        );
+        segarkanJumlahBelumDisposisi();
+
+        /* --- Pemberitahuan ke manajer: disposisi diteruskan --- */
+        function notifPenerimaDisposisi(d) {
+            const sifatTeks = { P: 'Penting', B: 'Biasa', R: 'Rahasia' }[d.sifat];
+
+            const daftar = d.penerima.map(nama => {
+                const baris = d.sifat === 'R'
+                    // Disposisi rahasia: isi tidak dikirim lewat WhatsApp
+                    ? [
+                        '*[Arsip Digital - PT. Awan Prima Office]*',
+                        `Yth. ${nama},`,
+                        'Anda menerima *disposisi RAHASIA* dari Pimpinan.',
+                        '',
+                        'Silakan buka sistem Arsip Digital untuk melihat detailnya.'
+                    ]
+                    : [
+                        '*[Arsip Digital - PT. Awan Prima Office]*',
+                        `Yth. ${nama},`,
+                        'Anda menerima *disposisi* dari Pimpinan.',
+                        '',
+                        `Nomor Surat: ${d.noSurat}`,
+                        `Dari: ${d.asalSurat}`,
+                        `Perihal: ${d.perihal}`,
+                        `Sifat: ${sifatTeks}`,
+                        `Instruksi: ${d.instruksi}`,
+                        `Batas Penyelesaian: ${d.tglSelesai}`,
+                        '',
+                        'Mohon segera ditindaklanjuti. Terima kasih.'
+                    ];
+                return { nama, pesan: baris.join('\n') };
+            });
+
+            tampilkanWa('Disposisi tersimpan. Kirim pemberitahuan ke penerima:', daftar);
+        }
+                /* ===== TAMBAHAN: LOGIN, PERAN & LOGOUT ===== */
+
+        const HALAMAN_LOGIN = 'login.html';
+        const peranSaatIni = localStorage.getItem('currentRole');
+        const LABEL_PERAN = { admin: 'Admin', sekretaris: 'Sekretaris', pimpinan: 'Pimpinan' };
+
+        // Tampilkan akun yang sedang login di bagian atas
+        document.querySelector('.user-profile').textContent = '👤 ' + (LABEL_PERAN[peranSaatIni] || '');
+
+        // Menggantikan openFormModal lama: pimpinan tidak boleh membuka form input
+        const FORM_INPUT_DATA = ['inputModalMasuk', 'inputModalKeluar', 'inputModalKlasifikasi'];
+        function openFormModal(id) {
+            if (peranSaatIni === 'pimpinan' && FORM_INPUT_DATA.includes(id)) {
+                alert('Akun Pimpinan hanya dapat memberikan disposisi.');
+                return;
+            }
+            document.getElementById(id).style.display = 'flex';
+        }
+
+        // Pembatasan tampilan untuk pimpinan
+        if (peranSaatIni === 'pimpinan') {
+            // Tombol input surat masuk & keluar
+            document.querySelectorAll(
+                '#suratMasuk .agenda-controls .btn-blue, #suratKeluar .agenda-controls .btn-blue'
+            ).forEach(b => b.remove());
+
+            // Tombol pengingat ke pimpinan tidak diperlukan oleh pimpinan sendiri
+            document.querySelectorAll('#suratMasuk .agenda-controls .btn-outline-cyan')
+                .forEach(b => { b.style.display = 'none'; });
+
+            // Tombol hapus surat
+            document.querySelectorAll('#tableSuratMasuk .btn-hapus, #tableSuratKeluar .btn-hapus')
+                .forEach(b => b.remove());
+
+            // Tombol tambah kode klasifikasi dan kolom Aksi (hapus) di tabel klasifikasi
+            const kontrolKlas = document.querySelector('#klasifikasi .agenda-controls');
+            if (kontrolKlas) kontrolKlas.remove();
+            tabelKlas.querySelector('thead tr').lastElementChild.remove();
+            tabelKlas.querySelectorAll('tbody tr').forEach(tr => {
+                if (barisJudulKelompok(tr)) tr.cells[0].colSpan = 3;
+                else tr.lastElementChild.remove();
+            });
+        }
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', function (e) {
+            e.preventDefault();
+            if (!confirm('Yakin ingin keluar dari sistem?')) return;
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('currentRole');
+            window.location.replace(HALAMAN_LOGIN);
+        });
+
+        
+/* ===== TAMBAHAN: PENYIMPANAN OTOMATIS, FITUR EDIT & DATA AWAL ===== */
+
+        const KEY_MASUK     = 'arsip_surat_masuk';
+        const KEY_KELUAR    = 'arsip_surat_keluar';
+        const KEY_DISPOSISI = 'arsip_disposisi';
+        const KEY_SEED      = 'arsip_data_awal_dimuat';
+
+        // Data awal (dimasukkan sekali saja ke penyimpanan browser)
+        const DATA_AWAL_MASUK = [
+            { id: 'data-masuk-1', noSurat: '005/110.1/PZ/IX/2026', tglTerima: '06 Sep 2026', tglSurat: '05 Sep 2026', pengirim: 'PT. PUTRI ZALSABILA, Jl. Seroja No.32', kode: 'P', lampiran: '1 Berkas Proposal', perihal: 'Perkenalan Produk', isi: 'Perusahaan yang bergerak di bidang distribusi dan produksi furniture serta layanan konsultasi desain, pengiriman, dan instalasi', sudahDisposisi: true },
+            { id: 'data-masuk-2', noSurat: '003/110.1/IX/2026', tglTerima: '25 Sep 2026', tglSurat: '24 Sep 2026', pengirim: 'PT Aptivora Digital Nusantara, Jl. Seroja No.32, Bandung', kode: 'Bandung', lampiran: '1 Berkas', perihal: 'Tanggapan Perkenalan Produk', isi: 'PT Aptivora Digital Nusantara terbuka terhadap peluang kerja sama dengan PT Awan Prima Office dalam memenuhi kebutuhan perlengkapan dan peralatan kantor' },
+            { id: 'data-masuk-3', noSurat: '001/110.1/IB/IX/2026', tglTerima: '07 Sep 2026', tglSurat: '03 Sep 2026', pengirim: 'PT. IBRAHIM, Jl. Perintis Kemerdekaan 10 No.3, Makassar', kode: '110.1', lampiran: '-', perihal: 'Perkenalan Produk', isi: 'Perusahaan yang bergerak di bidang layanan dan solusi digital' },
+            { id: 'data-masuk-4', noSurat: '005/130.1/IX/2026', tglTerima: '14 Sep 2026', tglSurat: '12 Sep 2026', pengirim: 'PT. IBRAHIM, Jl. Perintis Kemerdekaan 10 No.3, Makassar', kode: '130.1', lampiran: '-', perihal: 'Penawaran', isi: 'Menawarkan beberapa produk berupa PC dan Mouse yang dapat digunakan untuk menunjang kegiatan operasional kantor' },
+            { id: 'data-masuk-5', noSurat: '-', tglTerima: '16 Sep 2026', tglSurat: '16 Sep 2026', pengirim: 'Syahrul Tri Darmawan', kode: 'S', lampiran: '-', perihal: 'Pengajuan Cuti Tahunan', isi: 'Mengajukan cuti tahunan selama 3 hari, mulai Kamis 17 September 2026 hingga 19 September 2026' },
+            { id: 'data-masuk-6', noSurat: '-', tglTerima: '22 Sep 2026', tglSurat: '20 Sep 2026', pengirim: 'Tiara Lestari', kode: 'Lamaran', lampiran: '-', perihal: 'Lamaran Pekerjaan', isi: 'Melamar sebagai staff administrasi' },
+            { id: 'data-masuk-7', noSurat: '010/150.1/IB/X/2026', tglTerima: '11 Okt 2026', tglSurat: '11 Okt 2026', pengirim: 'PT. IBRAHIM, Jl. Perintis Kemerdekaan 10 No.3, Makassar', kode: 'Makassar', lampiran: '-', perihal: 'Pengiriman Barang', isi: 'Pemberitahuan mengenai pengiriman barang pesanan' },
+            { id: 'data-masuk-8', noSurat: '011/150.2/IB/X/2026', tglTerima: '11 Okt 2026', tglSurat: '11 Okt 2026', pengirim: 'PT. IBRAHIM, Jl. Perintis Kemerdekaan 10 No.3, Makassar', kode: 'Makassar', lampiran: '-', perihal: 'Surat Pengantar Barang', isi: 'Informasi mengenai barang-barang pesanan' },
+            { id: 'data-masuk-9', noSurat: '012/160.1/F/X/2026', tglTerima: '11 Okt 2026', tglSurat: '11 Okt 2026', pengirim: 'PT. IBRAHIM, Jl. Perintis Kemerdekaan 10 No.3, Makassar', kode: 'Makassar', lampiran: '-', perihal: 'Faktur', isi: 'Informasi mengenai jumlah pembayaran' }
+        ];
+        const DATA_AWAL_KELUAR = [
+            { id: 'data-keluar-1', noSurat: '001/110.1/APO/IX/2026', tglKirim: '01 Sep 2026', tglSurat: '01 Sep 2026', tujuan: 'Direktur PT Aptivora Digital Nusantara, Jl. Seroja No.32, Bandung', kode: 'Bandung', perihal: 'Perkenalan Produk', isi: 'Perkenalan produk dan layanan perusahaan' },
+            { id: 'data-keluar-2', noSurat: '002/120.1/APO/IX/2026', tglKirim: '07 Sep 2026', tglSurat: '07 Sep 2026', tujuan: 'Direktur PT. PUTRI ZALSABILA, Jl. Seroja No.32, Pinrang', kode: 'P', perihal: 'Permintaan Penawaran', isi: 'Permintaan katalog, brosur, dan harga produk' },
+            { id: 'data-keluar-3', noSurat: '003/120.1/APO/IX/2026', tglKirim: '08 Sep 2026', tglSurat: '08 Sep 2026', tujuan: 'Direktur PT IBRAHIM, Jl. Perintis Kemerdekaan 10 No.3, Makassar', kode: 'I', perihal: 'Permintaan Penawaran', isi: 'Permintaan daftar harga, produk dan layanan' },
+            { id: 'data-keluar-4', noSurat: '004/230.5/APO/IX/2026', tglKirim: '15 Sep 2026', tglSurat: '15 Sep 2026', tujuan: 'Seluruh Calon Pelamar', kode: 'Lowongan Kerja', perihal: 'Pengumuman Lowongan Kerja', isi: 'Membuka kesempatan bagi individu yang kompeten dan bertanggung jawab untuk bergabung bersama PT AWAN PRIMA OFFICE sebagai Staff Administrasi' },
+            { id: 'data-keluar-5', noSurat: '005/210.3/APO/IX/2026', tglKirim: '16 Sep 2026', tglSurat: '16 Sep 2026', tujuan: 'Syahrul Tri Darmawan', kode: '210.3', perihal: 'Balasan Permohonan Cuti', isi: 'Permohonan cuti tahunan selama 3 yang di ajukan pada tanggal 16 September 2026 diterima' },
+            { id: 'data-keluar-6', noSurat: '006/130.1/APO/IX/2026', tglKirim: '30 Sep 2026', tglSurat: '30 Sep 2026', tujuan: 'Direktur PT Aptivora Digital Nusantara, Jl. Seroja No.32, Bandung', kode: 'Bandung', perihal: 'Penawaran Barang', isi: 'Informasi mengenai katalog produk, daftar harga, ketentuan pemesanan, dan bentuk kerja sama' },
+            { id: 'data-keluar-7', noSurat: '007/230.2/APO/X/2026', tglKirim: '01 Okt 2026', tglSurat: '01 Okt 2026', tujuan: 'Tiara Lestari', kode: '230.2', perihal: 'Panggilan Wawancara', isi: 'Panggilan wawancara kerja kepada Saudari Tiara Lestari pada hari Senin, 5 Oktober 2026' },
+            { id: 'data-keluar-8', noSurat: '008/240.5/SK/X/2026', tglKirim: '07 Okt 2026', tglSurat: '07 Okt 2026', tujuan: 'Tiara Lestari', kode: 'Surat Keputusan', perihal: 'Surat Keputusan Pengangkatan Pegawai Tetap', isi: 'Pengangkatan Saudari Tiara Lestari sebagai pegawai tetap' },
+            { id: 'data-keluar-9', noSurat: '009/140.1/P/X/2026', tglKirim: '11 Okt 2026', tglSurat: '11 Okt 2026', tujuan: 'Direktur PT IBRAHIM, Jl. Perintis Kemerdekaan 10 No.3, Makassar', kode: 'Makassar', perihal: 'Pesanan', isi: 'Melakukan pesanan barang untuk keperluan operasional' },
+            { id: 'data-keluar-10', noSurat: '010/150.1/APO/X/2026', tglKirim: '11 Okt 2026', tglSurat: '11 Okt 2026', tujuan: 'Direktur PT. PUTRI ZALSABILA, Jl. Seroja No.32, Pinrang', kode: 'P', perihal: 'Pengiriman Barang', isi: 'Pemberitahuan mengenai pengiriman barang pesanan' },
+            { id: 'data-keluar-11', noSurat: '011/150.2/APO/X/2026', tglKirim: '11 Okt 2026', tglSurat: '11 Okt 2026', tujuan: 'Direktur PT. PUTRI ZALSABILA, Jl. Seroja No.32, Pinrang', kode: 'P', perihal: 'Surat Pengantar Barang', isi: 'Informasi mengenai barang-barang pesanan' },
+            { id: 'data-keluar-12', noSurat: '012/160.1/F/X/2026', tglKirim: '11 Okt 2026', tglSurat: '11 Okt 2026', tujuan: 'Direktur PT. PUTRI ZALSABILA, Jl. Seroja No.32, Pinrang', kode: 'P', perihal: 'Faktur', isi: 'Informasi mengenai jumlah pembayaran' },
+            { id: 'data-keluar-13', noSurat: '013/180.2/SPK/X/2026', tglKirim: '15 Okt 2026', tglSurat: '15 Okt 2026', tujuan: 'Tiara Lestari', kode: 'Perjanjian Kerja', perihal: 'Perjanjian Kerja', isi: 'Kesepakatan kerja dengan Tiara Lestari' },
+            { id: 'data-keluar-14', noSurat: '014/170.1/APO/X/2026', tglKirim: '15 Okt 2026', tglSurat: '15 Okt 2026', tujuan: 'Direktur PT IBRAHIM, Jl. Perintis Kemerdekaan 10 No.3, Makassar', kode: '014/170.1/APO/X/2026', perihal: 'Klaim Kerusakan Barang', isi: 'Kerusakan pada Personal Computer yang dikirim serta permintaan untuk pergantian barang' }
+        ];
+
+        function buatId() { return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+        function bacaStorage(kunci) {
+            try {
+                const d = JSON.parse(localStorage.getItem(kunci));
+                return Array.isArray(d) ? d : [];
+            } catch (err) { return []; }
+        }
+
+        function tulisStorage(kunci, nilai, senyap) {
+            try {
+                localStorage.setItem(kunci, JSON.stringify(nilai));
+            } catch (err) {
+                if (!senyap) alert('Data gagal disimpan otomatis (penyimpanan browser penuh atau diblokir).');
+            }
+        }
+
+        /* --- Kunci file surat. Surat tanpa nomor ("-") memakai id agar file tidak tertukar --- */
+        function kunciFile(jenis, rec) {
+            return rec.noSurat === '-' ? jenis + '|-#' + rec.id : kunciSurat(jenis, rec.noSurat);
+        }
+
+        function simpanFileKey(kunci, file) {
+            arsipFile[kunci] = { url: URL.createObjectURL(file), type: file.type, name: file.name };
+        }
+
+        /* Nomor surat "-" (surat tanpa nomor) boleh dipakai lebih dari satu kali */
+        function nomorDobel(daftar, noSurat, kecualiId) {
+            if (noSurat === '-') return false;
+            return daftar.some(r => r.id !== kecualiId && String(r.noSurat).toLowerCase() === noSurat.toLowerCase());
+        }
+
+        /* --- File surat disimpan di IndexedDB (ukuran besar tidak muat di localStorage) --- */
+        function bukaDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open('arsipDigitalDB', 1);
+                req.onupgradeneeded = () => req.result.createObjectStore('files');
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+function simpanBlob(kunci, file) {
+    return bukaDB().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction('files', 'readwrite');
+        tx.objectStore('files').put({ blob: file, type: file.type, name: file.name }, kunci);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+    })).catch(err => {
+        console.warn('File surat gagal disimpan permanen:', err);
+        alert('File surat BELUM tersimpan permanen (' + (err && err.name || 'error') + '). Jangan tutup halaman, lalu coba upload lagi.');
+    });
+}
+        function hapusBlob(kunci) {
+            return bukaDB().then(db => new Promise((resolve, reject) => {
+                const tx = db.transaction('files', 'readwrite');
+                tx.objectStore('files').delete(kunci);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            })).catch(err => console.warn('File surat gagal dihapus:', err));
+        }
+
+        function pindahBlob(kunciLama, kunciBaru) {
+            return bukaDB().then(db => new Promise((resolve, reject) => {
+                const tx = db.transaction('files', 'readwrite');
+                const st = tx.objectStore('files');
+                const g = st.get(kunciLama);
+                g.onsuccess = () => {
+                    if (g.result) { st.put(g.result, kunciBaru); st.delete(kunciLama); }
+                };
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            })).catch(err => console.warn('File surat gagal dipindahkan:', err));
+        }
+
+        function muatFileTersimpan() {
+            bukaDB().then(db => {
+                const req = db.transaction('files', 'readonly').objectStore('files').openCursor();
+                req.onsuccess = () => {
+                    const c = req.result;
+                    if (!c) return;
+                    if (!arsipFile[c.key]) {
+                        arsipFile[c.key] = { url: URL.createObjectURL(c.value.blob), type: c.value.type, name: c.value.name };
+                    }
+                    c.continue();
+                };
+            }).catch(err => console.warn('File surat tersimpan gagal dimuat:', err));
+        }
+
+        function nomorUlang(tbody) {
+            Array.from(tbody.rows).forEach((row, i) => { row.cells[0].textContent = i + 1; });
+        }
+
+        function tanggalKeISO(teks) {
+            const bulan = { jan: 1, feb: 2, mar: 3, apr: 4, mei: 5, jun: 6, jul: 7, agu: 8, sep: 9, okt: 10, nov: 11, des: 12 };
+            const m = String(teks || '').trim().match(/^(\d{1,2})\s+([A-Za-z]{3})[A-Za-z]*\s+(\d{4})$/);
+            if (!m || !bulan[m[2].toLowerCase()]) return '';
+            return `${m[3]}-${String(bulan[m[2].toLowerCase()]).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+        }
+
+        /* --- Preview & cetak: menerima kunci file langsung (untuk surat tanpa nomor) --- */
+async function previewFile(jenis, noSurat, kunci) {
+    const data = await ambilFile(kunci || kunciSurat(jenis, noSurat));
+    const area = document.getElementById('previewFileArea');
+    document.getElementById('previewFileJudul').textContent = noSurat;
+    area.innerHTML = '';
+
+    if (!data) {
+        const p = document.createElement('p');
+        p.style.cssText = 'text-align:center; color:#94a3b8; padding:40px 0;';
+        p.textContent = 'Belum ada file surat yang diupload untuk surat ini.';
+        area.appendChild(p);
+    } else if (data.type === 'application/pdf') {
+        const frame = document.createElement('iframe');
+        frame.src = data.url;
+        frame.style.cssText = 'width:100%; height:65vh; border:none; background:#fff; border-radius:8px;';
+        area.appendChild(frame);
+    } else if (data.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = data.url;
+        img.style.cssText = 'max-width:100%; max-height:65vh; display:block; margin:0 auto; border-radius:8px; background:#fff;';
+        area.appendChild(img);
+    }
+    document.getElementById('previewFileModal').style.display = 'flex';
+}
+
+async function cetakFisikSurat(jenis, noSurat, tglSurat, entitas, perihal, isi, kunci) {
+    const data = await ambilFile(kunci || kunciSurat(jenis, noSurat));
+            if (data) { cetakFile(data); return; }
+
+            // Jika belum ada file yang diupload, cetak lembar ringkasan surat
+            const label = jenis === 'Surat Masuk' ? 'Dari' : 'Kepada';
+            cetakDokumen(`
+                <html><head><title>${escapeHTML(noSurat)}</title></head>
+                <body style="font-family:'Times New Roman',serif; padding:30px;">
+                    <div style="text-align:center; border-bottom:3px double #000; padding-bottom:12px; margin-bottom:20px;">
+                        <h3 style="margin:0;">PT. AWAN PRIMA OFFICE</h3>
+                        <p style="margin:4px 0 0; font-size:14px;">Jl. Kemerdekaan No. 11, Makassar, Sulawesi Selatan<br>Telp. (0411) 06524 | Email: infoawanprima@gmail.com</p>
+                    </div>
+                    <h4 style="text-align:center; text-decoration:underline;">${escapeHTML(jenis.toUpperCase())}</h4>
+                    <table style="width:100%; line-height:1.8;">
+                        <tr><td style="width:140px;"><strong>Nomor Surat</strong></td><td>: ${escapeHTML(noSurat)}</td></tr>
+                        <tr><td><strong>Tanggal</strong></td><td>: ${escapeHTML(tglSurat)}</td></tr>
+                        <tr><td><strong>${label}</strong></td><td>: ${escapeHTML(entitas)}</td></tr>
+                        <tr><td><strong>Perihal</strong></td><td>: ${escapeHTML(perihal)}</td></tr>
+                    </table>
+                    <div style="border-top:1px solid #999; border-bottom:1px solid #999; padding:12px 0; margin-top:15px;">
+                        <strong>Isi Ringkas:</strong>
+                        <p>${escapeHTML(isi)}</p>
+                    </div>
+                </body></html>
+            `);
+        }
+
+        /* --- Baris tabel Surat Masuk: No | Tgl Terima | Nomor | Tgl Surat | Dari | Perihal | Isi | Kode | Status | Aksi --- */
+        function bangunBarisMasuk(rec) {
+            const tbody = document.querySelector('#tableSuratMasuk tbody');
+            const statusId = 'sm-status-' + rec.id;
+            const kunci = kunciFile('Surat Masuk', rec);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${tbody.rows.length + 1}</td>
+                <td>${escapeHTML(rec.tglTerima)}</td>
+                <td><strong>${escapeHTML(rec.noSurat)}</strong></td>
+                <td>${escapeHTML(rec.tglSurat)}</td>
+                <td>${escapeHTML(rec.pengirim)}</td>
+                <td>${escapeHTML(rec.perihal)}</td>
+                <td>${escapeHTML(rec.isi)}</td>
+                <td><span class="badge-kode">${escapeHTML(rec.kode)}</span></td>
+                <td><span class="status-badge status-belum" id="${statusId}">🔴 Belum</span></td>
+                <td style="text-align: center;"><div class="btn-action-group"></div></td>
+            `;
+
+            const grup = tr.querySelector('.btn-action-group');
+            grup.appendChild(buatTombol('Lihat 📄', 'btn-view', () => previewFile('Surat Masuk', rec.noSurat, kunci)));
+            grup.appendChild(buatTombol('Cetak 🖨️', 'btn-print', () =>
+                cetakFisikSurat('Surat Masuk', rec.noSurat, rec.tglSurat, rec.pengirim, rec.perihal, rec.isi, kunci)));
+            if (peranSaatIni !== 'admin') {
+    grup.appendChild(buatTombol('Disposisi 📋', 'btn-disp', () =>
+        kirimDisposisi(rec.noSurat, rec.tglSurat, rec.pengirim, rec.perihal, rec.lampiran, statusId)));
+}
+if (peranSaatIni !== 'pimpinan') {
+                grup.appendChild(buatTombol('Edit ✏️', 'btn-edit', () => bukaEditSurat('Surat Masuk', rec.id)));
+                grup.appendChild(buatTombol('Hapus 🗑️', 'btn-hapus', () => hapusDataSurat('Surat Masuk', rec.id)));
+            }
+            tbody.appendChild(tr);
+            return tr;
+        }
+
+        /* --- Baris tabel Surat Keluar: No | Tgl Kirim | Nomor | Tgl Surat | Kepada | Perihal | Isi | Kode | Aksi --- */
+        function bangunBarisKeluar(rec) {
+            const tbody = document.querySelector('#tableSuratKeluar tbody');
+            const kunci = kunciFile('Surat Keluar', rec);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${tbody.rows.length + 1}</td>
+                <td>${escapeHTML(rec.tglKirim)}</td>
+                <td><strong>${escapeHTML(rec.noSurat)}</strong></td>
+                <td>${escapeHTML(rec.tglSurat)}</td>
+                <td>${escapeHTML(rec.tujuan)}</td>
+                <td>${escapeHTML(rec.perihal)}</td>
+                <td>${escapeHTML(rec.isi)}</td>
+                <td><span class="badge-kode">${escapeHTML(rec.kode)}</span></td>
+                <td style="text-align: center;"><div class="btn-action-group"></div></td>
+            `;
+
+            const grup = tr.querySelector('.btn-action-group');
+            grup.appendChild(buatTombol('Lihat 📄', 'btn-view', () => previewFile('Surat Keluar', rec.noSurat, kunci)));
+            grup.appendChild(buatTombol('Cetak 🖨️', 'btn-print', () =>
+                cetakFisikSurat('Surat Keluar', rec.noSurat, rec.tglSurat, rec.tujuan, rec.perihal, rec.isi, kunci)));
+            if (peranSaatIni !== 'pimpinan') {
+                grup.appendChild(buatTombol('Edit ✏️', 'btn-edit', () => bukaEditSurat('Surat Keluar', rec.id)));
+                grup.appendChild(buatTombol('Hapus 🗑️', 'btn-hapus', () => hapusDataSurat('Surat Keluar', rec.id)));
+            }
+            tbody.appendChild(tr);
+            return tr;
+        }
+
+        function bangunBarisDisposisi(rec) {
+            const tbody = document.querySelector('#tableDisposisi tbody');
+            const sifatText = rec.sifat === 'P' ? 'P (Penting)' : (rec.sifat === 'B' ? 'B (Biasa)' : 'R (Rahasia)');
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${tbody.rows.length + 1}</td>
+                <td><strong>${escapeHTML(rec.noSurat)}</strong><br><small>${escapeHTML(rec.asalSurat)}</small></td>
+                <td>${escapeHTML(rec.perihal)}</td>
+                <td><span class="badge-sifat ${rec.sifat === 'P' ? 'sifat-penting' : ''}">${sifatText}</span></td>
+                <td>${escapeHTML(rec.instruksi)}</td>
+                <td>${rec.penerima.map((nama, i) => `${i + 1}. ${escapeHTML(nama)}`).join('<br>')}</td>
+                <td>${escapeHTML(rec.tglSelesai)}</td>
+                <td style="text-align: center;"></td>
+            `;
+            tr.lastElementChild.appendChild(buatTombol('Cetak Fisik 🖨️', 'btn-print', () =>
+                cetakLembarDisposisi(rec.perihal, rec.tglSelesai, rec.tglSurat, rec.noSurat, rec.asalSurat, rec.lampiran, rec.instruksi, rec.penerima, null, rec.sifat)));
+            tbody.appendChild(tr);
+            return tr;
+        }
+
+        /* Status "Sudah" mengikuti data disposisi yang tersimpan */
+        function sinkronStatusDisposisi() {
+            const idSudah = new Set(bacaStorage(KEY_DISPOSISI).map(d => d.suratId).filter(Boolean));
+            bacaStorage(KEY_MASUK).forEach(rec => {
+                const badge = document.getElementById('sm-status-' + rec.id);
+                if (badge && (rec.sudahDisposisi || idSudah.has(rec.id))) {
+                    badge.className = 'status-badge status-sudah';
+                    badge.innerHTML = '🟢 Sudah';
+                }
+            });
+        }
+
+        function renderTabelMasuk() {
+            document.querySelector('#tableSuratMasuk tbody').innerHTML = '';
+            bacaStorage(KEY_MASUK).forEach(rec => bangunBarisMasuk(rec));
+            sinkronStatusDisposisi();
+            filterSuratMasuk();
+        }
+
+        function renderTabelKeluar() {
+            document.querySelector('#tableSuratKeluar tbody').innerHTML = '';
+            bacaStorage(KEY_KELUAR).forEach(rec => bangunBarisKeluar(rec));
+            filterSuratKeluar();
+        }
+
+        /* Disesuaikan dengan kolom baru (Dari = kolom 5, Perihal = kolom 6) */
+        function daftarBelumDisposisi() {
+            return Array.from(document.querySelectorAll('#tableSuratMasuk tbody tr'))
+                .filter(tr => tr.querySelector('.status-belum'))
+                .map(tr => ({
+                    noSurat: tr.cells[2].querySelector('strong').textContent.trim(),
+                    pengirim: tr.cells[4].textContent.trim(),
+                    perihal: tr.cells[5].textContent.trim()
+                }));
+        }
+
+        /* --- Menggantikan saveSuratMasuk --- */
+        function saveSuratMasuk(e) {
+            e.preventDefault();
+
+            const rec = {
+                id:        buatId(),
+                noSurat:   document.getElementById('noSuratMasuk').value.trim(),
+                tglTerima: formatTanggal(document.getElementById('tglTerima').value),
+                tglSurat:  formatTanggal(document.getElementById('tglSuratMasuk').value),
+                pengirim:  document.getElementById('pengirim').value.trim(),
+                kode:      document.getElementById('kodeArsipMasuk').value.trim(),
+                lampiran:  document.getElementById('lampiranMasukText').value.trim() || '-',
+                perihal:   document.getElementById('perihalMasuk').value.trim(),
+                isi:       document.getElementById('isiRingkasMasuk').value.trim()
+            };
+            const file = document.getElementById('fileSuratMasuk').files[0];
+
+            const daftar = bacaStorage(KEY_MASUK);
+            if (nomorDobel(daftar, rec.noSurat)) { alert('Nomor surat sudah terdaftar di Surat Masuk.'); return; }
+            if (file && !fileValid(file)) return;
+            if (file) {
+                const kunci = kunciFile('Surat Masuk', rec);
+                simpanFileKey(kunci, file);
+                simpanBlob(kunci, file);
+            }
+
+            daftar.push(rec);
+            tulisStorage(KEY_MASUK, daftar);
+            renderTabelMasuk();
+
+            document.getElementById('formSuratMasuk').reset();
+            closeFormModal('inputModalMasuk');
+            alert('Surat masuk berhasil disimpan!');
+            notifPimpinanSuratBaru({ noSurat: rec.noSurat, tglSurat: rec.tglSurat, pengirim: rec.pengirim, perihal: rec.perihal });
+        }
+
+        /* --- Menggantikan saveSuratKeluar --- */
+        function saveSuratKeluar(e) {
+            e.preventDefault();
+
+            const rec = {
+                id:       buatId(),
+                noSurat:  document.getElementById('noSuratKeluar').value.trim(),
+                tglKirim: formatTanggal(document.getElementById('tglKirim').value),
+                tglSurat: formatTanggal(document.getElementById('tglSuratKeluar').value),
+                tujuan:   document.getElementById('tujuan').value.trim(),
+                kode:     document.getElementById('kodeKlasifikasiKeluar').value,
+                perihal:  document.getElementById('perihalKeluar').value.trim(),
+                isi:      document.getElementById('isiRingkasKeluar').value.trim()
+            };
+            const file = document.getElementById('fileSuratKeluar').files[0];
+
+            const daftar = bacaStorage(KEY_KELUAR);
+            if (nomorDobel(daftar, rec.noSurat)) { alert('Nomor surat sudah terdaftar di Surat Keluar.'); return; }
+            if (file && !fileValid(file)) return;
+            if (file) {
+                const kunci = kunciFile('Surat Keluar', rec);
+                simpanFileKey(kunci, file);
+                simpanBlob(kunci, file);
+            }
+
+            daftar.push(rec);
+            tulisStorage(KEY_KELUAR, daftar);
+            renderTabelKeluar();
+
+            document.getElementById('formSuratKeluar').reset();
+            closeFormModal('inputModalKeluar');
+            alert('Surat keluar berhasil disimpan!');
+        }
+
+        /* --- Hapus surat (ikut tersimpan) --- */
+        function hapusDataSurat(jenis, id) {
+            const kunciData = jenis === 'Surat Masuk' ? KEY_MASUK : KEY_KELUAR;
+            const daftar = bacaStorage(kunciData);
+            const rec = daftar.find(r => r.id === id);
+            if (!rec) return;
+            if (!confirm(`Hapus ${jenis.toLowerCase()} nomor ${rec.noSurat}?`)) return;
+
+            const key = kunciFile(jenis, rec);
+            if (arsipFile[key]) {
+                URL.revokeObjectURL(arsipFile[key].url);
+                delete arsipFile[key];
+            }
+            hapusBlob(key);
+
+            tulisStorage(kunciData, daftar.filter(r => r.id !== id));
+            if (jenis === 'Surat Masuk') renderTabelMasuk(); else renderTabelKeluar();
+        }
+
+        /* --- Edit surat (masuk & keluar memakai satu modal) --- */
+        let editTarget = null;
+
+        function bukaEditSurat(jenis, id) {
+            const masuk = jenis === 'Surat Masuk';
+            const rec = bacaStorage(masuk ? KEY_MASUK : KEY_KELUAR).find(r => r.id === id);
+            if (!rec) return;
+            editTarget = { jenis, id };
+
+            document.getElementById('formEditSurat').reset();
+            document.getElementById('editSuratJudul').textContent = 'EDIT ' + jenis.toUpperCase();
+            document.getElementById('editLabelTglTerima').textContent = masuk ? 'Tanggal Terima' : 'Tanggal Kirim';
+            document.getElementById('editLabelPihak').textContent = masuk ? 'Pengirim (Dari)' : 'Kepada (Tujuan)';
+            document.getElementById('editGrupKodeMasuk').style.display = masuk ? '' : 'none';
+            document.getElementById('editGrupKodeKeluar').style.display = masuk ? 'none' : '';
+            document.getElementById('editGrupLampiran').style.display = masuk ? '' : 'none';
+
+            document.getElementById('editNoSurat').value = rec.noSurat;
+            document.getElementById('editTglTerima').value = tanggalKeISO(masuk ? rec.tglTerima : rec.tglKirim);
+            document.getElementById('editTglSurat').value = tanggalKeISO(rec.tglSurat);
+            document.getElementById('editPihak').value = masuk ? rec.pengirim : rec.tujuan;
+            document.getElementById('editPerihal').value = rec.perihal;
+            document.getElementById('editIsi').value = rec.isi;
+
+            if (masuk) {
+                document.getElementById('editKodeMasuk').value = rec.kode;
+                document.getElementById('editLampiran').value = rec.lampiran === '-' ? '' : (rec.lampiran || '');
+            } else {
+                const sel = document.getElementById('editKodeKeluar');
+                sel.innerHTML = '';
+                Array.from(document.getElementById('kodeKlasifikasiKeluar').options).slice(1)
+                    .forEach(o => sel.add(new Option(o.textContent, o.value)));
+                if (!Array.from(sel.options).some(o => o.value === rec.kode)) sel.add(new Option(rec.kode, rec.kode));
+                sel.value = rec.kode;
+            }
+            openFormModal('editSuratModal');
+        }
+
+        function saveEditSurat(e) {
+            e.preventDefault();
+            if (!editTarget) return;
+
+            const { jenis, id } = editTarget;
+            const masuk = jenis === 'Surat Masuk';
+            const kunciData = masuk ? KEY_MASUK : KEY_KELUAR;
+            const daftar = bacaStorage(kunciData);
+            const idx = daftar.findIndex(r => r.id === id);
+            if (idx === -1) return;
+            const lama = daftar[idx];
+
+            const noSurat = document.getElementById('editNoSurat').value.trim();
+            const kode = masuk ? document.getElementById('editKodeMasuk').value.trim() : document.getElementById('editKodeKeluar').value;
+            const file = document.getElementById('editFile').files[0];
+
+            if (!kode) { alert('Kode wajib diisi.'); return; }
+            if (nomorDobel(daftar, noSurat, id)) {
+                alert('Nomor surat sudah terdaftar di ' + jenis + '.');
+                return;
+            }
+            if (file && !fileValid(file)) return;
+
+            const tglA = formatTanggal(document.getElementById('editTglTerima').value);
+            const tglSurat = formatTanggal(document.getElementById('editTglSurat').value);
+            const pihak = document.getElementById('editPihak').value.trim();
+            const perihal = document.getElementById('editPerihal').value.trim();
+            const isi = document.getElementById('editIsi').value.trim();
+
+            const baru = masuk
+                ? Object.assign({}, lama, { noSurat, tglTerima: tglA, tglSurat, pengirim: pihak, kode,
+                    lampiran: document.getElementById('editLampiran').value.trim() || '-', perihal, isi })
+                : Object.assign({}, lama, { noSurat, tglKirim: tglA, tglSurat, tujuan: pihak, kode, perihal, isi });
+
+            // File surat: diganti, atau mengikuti nomor surat yang baru
+            const kunciLama = kunciFile(jenis, lama);
+            const kunciBaru = kunciFile(jenis, baru);
+            if (file) {
+                if (arsipFile[kunciLama]) { URL.revokeObjectURL(arsipFile[kunciLama].url); delete arsipFile[kunciLama]; }
+                if (kunciLama !== kunciBaru) hapusBlob(kunciLama);
+                simpanFileKey(kunciBaru, file);
+                simpanBlob(kunciBaru, file);
+            } else if (kunciLama !== kunciBaru) {
+                if (arsipFile[kunciLama]) { arsipFile[kunciBaru] = arsipFile[kunciLama]; delete arsipFile[kunciLama]; }
+                pindahBlob(kunciLama, kunciBaru);
+            }
+
+            daftar[idx] = baru;
+            tulisStorage(kunciData, daftar);
+            if (masuk) renderTabelMasuk(); else renderTabelKeluar();
+
+            editTarget = null;
+            closeFormModal('editSuratModal');
+            alert('Perubahan berhasil disimpan!');
+        }
+
+        /* --- Menggantikan saveDisposisi: disposisi tersimpan & terhubung ke surat lewat id --- */
+        function saveDisposisi(e) {
+            e.preventDefault();
+
+            const statusId = document.getElementById('currentActiveStatusId').value;
+            const rec = {
+                suratId:    statusId.replace(/^sm-status-/, ''),
+                sifat:      document.querySelector('input[name="sifatDisposisiRadio"]:checked').value,
+                noSurat:    document.getElementById('dispNoSurat').value,
+                tglSurat:   document.getElementById('dispTglSurat').value,
+                asalSurat:  document.getElementById('dispAsalSurat').value,
+                perihal:    document.getElementById('dispPerihal').value,
+                tglSelesai: formatTanggal(document.getElementById('dispTglSelesai').value),
+                lampiran:   document.getElementById('dispLampiran').value,
+                instruksi:  document.getElementById('dispInstruksi').value,
+                penerima:   Array.from(document.querySelectorAll('#dispPenerimaList select'))
+                                 .map(s => s.value).filter(Boolean)
+            };
+
+            if (rec.penerima.length === 0) { alert('Pilih minimal satu penerima disposisi.'); return; }
+
+            const daftar = bacaStorage(KEY_DISPOSISI);
+            daftar.push(rec);
+            tulisStorage(KEY_DISPOSISI, daftar);
+
+            bangunBarisDisposisi(rec);
+            sinkronStatusDisposisi();
+
+            alert('Disposisi berhasil disimpan dan diteruskan!');
+            closeFormModal('inputModalDisposisi');
+            switchTabDirect('disposisi');
+            notifPenerimaDisposisi({
+                sifat: rec.sifat, noSurat: rec.noSurat, asalSurat: rec.asalSurat, perihal: rec.perihal,
+                instruksi: rec.instruksi, tglSelesai: rec.tglSelesai, penerima: rec.penerima
+            });
+        }
+
+const KEY_SEED_IDS = 'arsip_seed_ids';
+
+function gabungDataAwal(awal, ada, idSudahDiseed) {
+    ada.forEach(m => { if (!m.id) m.id = buatId(); });
+    const idAda = new Set(ada.map(m => m.id));
+    const noAda = new Set(ada.map(m => String(m.noSurat).toLowerCase()).filter(n => n !== '-'));
+
+    awal.forEach(r => {
+        if (idSudahDiseed.has(r.id)) return;      // pernah dimuat (bisa jadi sudah diedit/dihapus)
+        idSudahDiseed.add(r.id);
+        if (idAda.has(r.id)) return;
+        if (r.noSurat !== '-' && noAda.has(r.noSurat.toLowerCase())) return;
+        ada.push(Object.assign({}, r));
+    });
+    return ada;
+}
+
+(function muatArsipTersimpan() {
+    let masuk = bacaStorage(KEY_MASUK);
+    let keluar = bacaStorage(KEY_KELUAR);
+
+    let idSeed = new Set();
+    try { idSeed = new Set(JSON.parse(localStorage.getItem(KEY_SEED_IDS)) || []); } catch (err) {}
+
+    // Migrasi dari versi lama: data awal dianggap sudah pernah dimuat
+    try {
+        if (idSeed.size === 0 && localStorage.getItem(KEY_SEED) === '2') {
+            DATA_AWAL_MASUK.concat(DATA_AWAL_KELUAR).forEach(r => idSeed.add(r.id));
+        }
+    } catch (err) {}
+
+    masuk = gabungDataAwal(DATA_AWAL_MASUK, masuk, idSeed);
+    keluar = gabungDataAwal(DATA_AWAL_KELUAR, keluar, idSeed);
+    try { localStorage.setItem(KEY_SEED_IDS, JSON.stringify(Array.from(idSeed))); } catch (err) {}
+
+    tulisStorage(KEY_MASUK, masuk, true);
+    tulisStorage(KEY_KELUAR, keluar, true);
+
+    const disp = bacaStorage(KEY_DISPOSISI);
+    disp.forEach(d => {
+        if (!d.suratId) {
+            const r = masuk.find(m => String(m.noSurat).toLowerCase() === String(d.noSurat).toLowerCase());
+            if (r) d.suratId = r.id;
+        }
+    });
+    tulisStorage(KEY_DISPOSISI, disp, true);
+
+    disp.forEach(d => bangunBarisDisposisi(d));
+    nomorUlang(document.querySelector('#tableDisposisi tbody'));
+    renderTabelMasuk();
+    renderTabelKeluar();
+    muatFileTersimpan();
+})();
+
+// Minta browser agar tidak menghapus penyimpanan otomatis saat ruang penuh
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); 
+
+const KEY_KLAS = 'arsip_klasifikasi';
+
+function simpanKlasifikasi() {
+    const daftar = Array.from(tabelKlas.querySelectorAll('tbody tr'))
+        .filter(tr => !barisJudulKelompok(tr))
+        .map(tr => ({
+            kelompok: tr.cells[0].textContent.trim(),
+            kode: tr.cells[1].textContent.trim(),
+            perihal: tr.cells[2].textContent.trim()
+        }));
+    tulisStorage(KEY_KLAS, daftar, true);
+}
+
+(function muatKlasifikasiTersimpan() {
+    const tbody = tabelKlas.querySelector('tbody');
+    const sel = document.getElementById('kodeKlasifikasiKeluar');
+    let tersimpan = null;
+    try { tersimpan = JSON.parse(localStorage.getItem(KEY_KLAS)); } catch (err) {}
+
+    if (Array.isArray(tersimpan)) {
+        const kodeSimpan = new Set(tersimpan.map(k => k.kode));
+
+        // Buang kode bawaan yang pernah Anda hapus
+        Array.from(tbody.rows).forEach(tr => {
+            if (!barisJudulKelompok(tr) && !kodeSimpan.has(tr.cells[1].textContent.trim())) tr.remove();
+        });
+        Array.from(sel.options).slice(1).forEach(o => { if (!kodeSimpan.has(o.value)) o.remove(); });
+
+        // Tambahkan kode buatan Anda
+        const kodeAda = new Set(Array.from(tbody.rows)
+            .filter(r => !barisJudulKelompok(r)).map(r => r.cells[1].textContent.trim()));
+
+        tersimpan.filter(k => !kodeAda.has(k.kode)).forEach(k => {
+            const header = Array.from(tbody.rows)
+                .find(r => barisJudulKelompok(r) && r.cells[0].textContent.trim().startsWith(k.kelompok));
+            if (!header) return;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHTML(k.kelompok)}</td>
+                <td><span class="badge-kode">${escapeHTML(k.kode)}</span></td>
+                <td>${escapeHTML(k.perihal)}</td>`;
+            if (peranSaatIni !== 'pimpinan') tambahTombolHapusKlasifikasi(tr);
+
+            let ref = header.nextElementSibling;
+            while (ref && !barisJudulKelompok(ref) &&
+                   k.kode.localeCompare(ref.cells[1].textContent.trim(), undefined, { numeric: true }) > 0) {
+                ref = ref.nextElementSibling;
+            }
+            tbody.insertBefore(tr, ref);
+
+            if (!Array.from(sel.options).some(o => o.value === k.kode)) {
+                const opt = document.createElement('option');
+                opt.value = k.kode;
+                opt.dataset.perihal = k.perihal;
+                opt.textContent = `${k.kode} - ${k.perihal}`;
+                const setelah = Array.from(sel.options).slice(1)
+                    .find(o => k.kode.localeCompare(o.value, undefined, { numeric: true }) < 0);
+                sel.insertBefore(opt, setelah || null);
+            }
+        });
+    }
+
+    simpanKlasifikasi();
+    new MutationObserver(simpanKlasifikasi).observe(tbody, { childList: true });
+})();
+
+const KEY_BACKUP = [KEY_MASUK, KEY_KELUAR, KEY_DISPOSISI, KEY_SEED, KEY_SEED_IDS, KEY_KLAS];
+
+function blobKeDataURL(blob) {
+    return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = () => rej(r.error);
+        r.readAsDataURL(blob);
+    });
+}
+
+async function eksporBackup() {
+    try {
+        const data = { versi: 1, local: {}, files: {} };
+        KEY_BACKUP.forEach(k => { const v = localStorage.getItem(k); if (v !== null) data.local[k] = v; });
+
+        const db = await bukaDB();
+        await new Promise((resolve, reject) => {
+            const tugas = [];
+            const req = db.transaction('files', 'readonly').objectStore('files').openCursor();
+            req.onsuccess = () => {
+                const c = req.result;
+                if (!c) { Promise.all(tugas).then(resolve, reject); return; }
+                const kunci = c.key, v = c.value;
+                tugas.push(blobKeDataURL(v.blob).then(url => { data.files[kunci] = { url, type: v.type, name: v.name }; }));
+                c.continue();
+            };
+            req.onerror = () => reject(req.error);
+        });
+
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+        a.download = 'backup-arsip-' + new Date().toISOString().slice(0, 10) + '.json';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    } catch (err) {
+        alert('Backup gagal: ' + err.message);
+    }
+}
+
+async function pulihkanBackup(file) {
+    if (!file) return;
+    if (!confirm('Data saat ini akan diganti dengan isi backup. Lanjutkan?')) return;
+    try {
+        const data = JSON.parse(await file.text());
+        if (!data || !data.local) throw new Error('Format file backup tidak dikenali.');
+
+        const db = await bukaDB();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction('files', 'readwrite');
+            tx.objectStore('files').clear();
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error);
+        });
+        for (const kunci of Object.keys(data.files || {})) {
+            const f = data.files[kunci];
+            const blob = await (await fetch(f.url)).blob();
+            await simpanBlob(kunci, new File([blob], f.name, { type: f.type }));
+        }
+        KEY_BACKUP.forEach(k => localStorage.removeItem(k));
+        Object.keys(data.local).forEach(k => localStorage.setItem(k, data.local[k]));
+
+        alert('Data berhasil dipulihkan. Halaman akan dimuat ulang.');
+        location.reload();
+    } catch (err) {
+        alert('Pemulihan gagal: ' + err.message);
+    }
+}
+
+// Tombol di sidebar (tidak untuk pimpinan)
+if (peranSaatIni !== 'pimpinan') {
+    const footer = document.querySelector('.sidebar-footer');
+    const logout = document.getElementById('logoutBtn');
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.style.display = 'none';
+    input.addEventListener('change', () => { pulihkanBackup(input.files[0]); input.value = ''; });
+
+    const btnEkspor = document.createElement('a');
+    btnEkspor.href = '#';
+    btnEkspor.className = 'btn-nav btn-outline-cyan';
+    btnEkspor.style.justifyContent = 'center';
+    btnEkspor.textContent = '💾 Backup Data';
+    btnEkspor.addEventListener('click', e => { e.preventDefault(); eksporBackup(); });
+
+    const btnPulih = document.createElement('a');
+    btnPulih.href = '#';
+    btnPulih.className = 'btn-nav btn-outline-cyan';
+    btnPulih.style.justifyContent = 'center';
+    btnPulih.textContent = '📂 Pulihkan Data';
+    btnPulih.addEventListener('click', e => { e.preventDefault(); input.click(); });
+
+    footer.insertBefore(btnEkspor, logout);
+    footer.insertBefore(btnPulih, logout);
+    footer.appendChild(input);
+}
+
+function ambilFile(kunci) {
+    if (arsipFile[kunci]) return Promise.resolve(arsipFile[kunci]);
+    return bukaDB().then(db => new Promise(resolve => {
+        const req = db.transaction('files', 'readonly').objectStore('files').get(kunci);
+        req.onsuccess = () => {
+            const v = req.result;
+            if (!v) return resolve(null);
+            arsipFile[kunci] = { url: URL.createObjectURL(v.blob), type: v.type, name: v.name };
+            resolve(arsipFile[kunci]);
+        };
+        req.onerror = () => resolve(null);
+    })).catch(() => null);
+}
+</script>
+</body>
+</html>
